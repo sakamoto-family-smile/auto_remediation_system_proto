@@ -31,7 +31,7 @@ class CursorCLIAgent:
         # 新しいサービス統合
         self.vertex_ai = VertexAIService()
         self.github_service = GitHubService()
-        self.test_service = TestExecutionService()
+        # test_service は test_fix メソッド内で各呼び出しごとに作成される
 
         # レガシー設定（後方互換性のため保持）
         self.cursor_api_key = getattr(settings, 'CURSOR_API_KEY', None)
@@ -150,17 +150,10 @@ class CursorCLIAgent:
             Dict[str, Any]: テスト結果
         """
         try:
-            # TestExecutionServiceを使用して包括的テスト実行
-            # 既存のサービスインスタンスを再利用し、作業ディレクトリを更新
-            if not hasattr(self, 'test_service') or self.test_service is None:
-                self.test_service = TestExecutionService(repo_path)
-                logger.info("Created new TestExecutionService instance", repo_path=repo_path)
-            else:
-                # 既存のインスタンスの作業ディレクトリを更新
-                old_dir = self.test_service.working_directory
-                self.test_service.working_directory = repo_path
-                logger.info("Updated TestExecutionService working directory",
-                            old_dir=old_dir, new_dir=repo_path)
+            # 各test_fix呼び出しで新しいTestExecutionServiceインスタンスを作成
+            # これにより、並行実行時の競合状態を防ぎ、リポジトリパスの分離を保証
+            test_service = TestExecutionService(repo_path)
+            logger.info("Created isolated TestExecutionService instance", repo_path=repo_path)
 
             results = {
                 "success": False,
@@ -175,12 +168,12 @@ class CursorCLIAgent:
 
             # 言語別テスト実行
             if language == "python":
-                results["unit_tests"] = await self.test_service.run_python_tests()
-                results["lint_checks"] = await self.test_service.run_linting(language="python")
-                results["security_checks"] = await self.test_service.run_security_scan(language="python")
+                results["unit_tests"] = await test_service.run_python_tests()
+                results["lint_checks"] = await test_service.run_linting(language="python")
+                results["security_checks"] = await test_service.run_security_scan(language="python")
             elif language in ["javascript", "typescript"]:
-                results["unit_tests"] = await self.test_service.run_javascript_tests()
-                results["lint_checks"] = await self.test_service.run_linting(language="javascript")
+                results["unit_tests"] = await test_service.run_javascript_tests()
+                results["lint_checks"] = await test_service.run_linting(language="javascript")
 
             # 全テスト成功判定
             results["success"] = all([
