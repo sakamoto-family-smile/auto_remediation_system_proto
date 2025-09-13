@@ -11,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import DatabaseError, NotFoundError
-from app.schemas.error import RemediationAttemptResponse
+from app.schemas.error import (
+    RemediationAttemptResponse,
+    RemediationStatusUpdate,
+)
 from app.services.auth_service import AuthService
 from app.services.error_service import ErrorService
 
@@ -22,7 +25,7 @@ logger = structlog.get_logger()
 @router.patch("/attempts/{attempt_id}/status")
 async def update_remediation_status(
     attempt_id: uuid.UUID,
-    new_status: str,
+    status_update: RemediationStatusUpdate,
     current_user: Dict[str, Any] = Depends(AuthService.get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RemediationAttemptResponse:
@@ -31,7 +34,7 @@ async def update_remediation_status(
 
     Args:
         attempt_id: 改修試行ID
-        new_status: 新しいステータス
+        status_update: ステータス更新データ
         current_user: 現在のユーザー
         db: データベースセッション
 
@@ -41,13 +44,13 @@ async def update_remediation_status(
     try:
         error_service = ErrorService(db)
         attempt = await error_service.update_remediation_attempt(
-            attempt_id=attempt_id, status=new_status
+            attempt_id=attempt_id, status=status_update.status
         )
 
         logger.info(
             "Remediation attempt status updated",
             attempt_id=str(attempt_id),
-            new_status=new_status,
+            new_status=status_update.status,
             user_id=current_user["user_id"],
         )
 
@@ -65,7 +68,9 @@ async def update_remediation_status(
             detail="Failed to update remediation status",
         )
     except Exception as e:
-        logger.error("Unexpected error in update remediation status", error=str(e))
+        logger.error(
+            "Unexpected error in update remediation status", error=str(e)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",

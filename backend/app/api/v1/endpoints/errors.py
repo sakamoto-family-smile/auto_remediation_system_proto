@@ -17,6 +17,7 @@ from app.schemas.error import (
     ErrorIncidentCreate,
     ErrorIncidentListResponse,
     ErrorIncidentResponse,
+    IncidentStatusUpdate,
     RemediationAttemptCreate,
     RemediationAttemptResponse,
     RemediationRequest,
@@ -206,7 +207,7 @@ async def get_error_incident(
 @router.patch("/incidents/{incident_id}/status")
 async def update_incident_status(
     incident_id: uuid.UUID,
-    new_status: str,
+    status_update: IncidentStatusUpdate,
     current_user: Dict[str, Any] = Depends(AuthService.get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ErrorIncidentResponse:
@@ -215,7 +216,7 @@ async def update_incident_status(
 
     Args:
         incident_id: インシデントID
-        new_status: 新しいステータス
+        status_update: ステータス更新データ
         current_user: 現在のユーザー
         db: データベースセッション
 
@@ -225,13 +226,13 @@ async def update_incident_status(
     try:
         error_service = ErrorService(db)
         incident = await error_service.update_incident_status(
-            incident_id=incident_id, status=new_status
+            incident_id=incident_id, status=status_update.status
         )
 
         logger.info(
             "Incident status updated",
             incident_id=str(incident_id),
-            new_status=new_status,
+            new_status=status_update.status,
             user_id=current_user["user_id"],
         )
 

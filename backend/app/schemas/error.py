@@ -14,7 +14,9 @@ class ErrorIncidentCreate(BaseModel):
     error_type: str = Field(..., description="エラータイプ")
     severity: str = Field(..., description="重要度 (low/medium/high/critical)")
     service_name: str = Field(..., description="サービス名")
-    environment: str = Field(..., description="環境 (development/staging/production)")
+    environment: str = Field(
+        ..., description="環境 (development/staging/production)"
+    )
     error_message: str = Field(..., description="エラーメッセージ")
     stack_trace: Optional[str] = Field(None, description="スタックトレース")
     file_path: Optional[str] = Field(None, description="エラー発生ファイルパス")
@@ -130,4 +132,18 @@ class RemediationResponse(BaseModel):
     pr_url: Optional[str] = Field(None, description="PR URL")
     estimated_completion: Optional[datetime] = Field(
         None, description="完了予定時刻"
+    )
+
+
+class IncidentStatusUpdate(BaseModel):
+    """インシデントステータス更新リクエストスキーマ"""
+    status: str = Field(
+        ..., description="新しいステータス (open/investigating/resolved/closed)"
+    )
+
+
+class RemediationStatusUpdate(BaseModel):
+    """改修試行ステータス更新リクエストスキーマ"""
+    status: str = Field(
+        ..., description="新しいステータス (pending/in_progress/completed/failed)"
     )
