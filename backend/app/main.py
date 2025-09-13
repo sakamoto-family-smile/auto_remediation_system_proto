@@ -142,7 +142,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def health_check():
     """
     ヘルスチェックエンドポイント
-    
+
     Returns:
         dict: サービス状態情報
     """
