@@ -214,6 +214,73 @@ class ErrorService:
                 f"Failed to get error incidents: {str(e)}", "get_incidents"
             )
 
+    async def get_incidents_with_count(
+        self,
+        service_name: Optional[str] = None,
+        environment: Optional[str] = None,
+        severity: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[ErrorIncident], int]:
+        """
+        エラーインシデント一覧と総件数を取得
+
+        Args:
+            service_name: サービス名フィルター
+            environment: 環境フィルター
+            severity: 重要度フィルター
+            status: ステータスフィルター
+            limit: 取得件数上限
+            offset: オフセット
+
+        Returns:
+            tuple[List[ErrorIncident], int]: インシデント一覧と総件数
+        """
+        try:
+            # 基本クエリ
+            base_stmt = select(ErrorIncident)
+
+            # フィルター適用
+            if service_name:
+                base_stmt = base_stmt.where(ErrorIncident.service_name == service_name)
+            if environment:
+                base_stmt = base_stmt.where(ErrorIncident.environment == environment)
+            if severity:
+                base_stmt = base_stmt.where(ErrorIncident.severity == severity)
+            if status:
+                base_stmt = base_stmt.where(ErrorIncident.status == status)
+
+            # 総件数取得
+            count_stmt = select(func.count()).select_from(base_stmt.subquery())
+            count_result = await self.db.execute(count_stmt)
+            total_count = count_result.scalar()
+
+            # ページング適用してデータ取得
+            incidents_stmt = base_stmt.order_by(desc(ErrorIncident.last_occurred)).limit(limit).offset(offset)
+            incidents_result = await self.db.execute(incidents_stmt)
+            incidents = incidents_result.scalars().all()
+
+            logger.debug(
+                "Error incidents with count retrieved",
+                count=len(incidents),
+                total_count=total_count,
+                filters={
+                    "service_name": service_name,
+                    "environment": environment,
+                    "severity": severity,
+                    "status": status,
+                },
+            )
+
+            return list(incidents), total_count
+
+        except Exception as e:
+            logger.error("Failed to get error incidents with count", error=str(e))
+            raise DatabaseError(
+                f"Failed to get error incidents with count: {str(e)}", "get_incidents_with_count"
+            )
+
     async def update_incident_status(
         self, incident_id: uuid.UUID, status: str
     ) -> ErrorIncident:

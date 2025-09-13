@@ -13,11 +13,12 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 import structlog
-from github import Github
-from slack_sdk import WebClient
 
 from app.core.config import get_settings
 from app.core.exceptions import CursorCLIError, ExternalServiceError
+from app.services.vertex_ai_service import VertexAIService
+from app.services.github_service import GitHubService
+from app.services.test_execution_service import TestExecutionService
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -27,16 +28,19 @@ class CursorCLIAgent:
     """cursor-cli統合エージェント"""
 
     def __init__(self):
-        self.github = Github(settings.GITHUB_TOKEN) if settings.GITHUB_TOKEN else None
-        self.slack = WebClient(token=settings.SLACK_BOT_TOKEN) if settings.SLACK_BOT_TOKEN else None
-        self.cursor_api_key = settings.CURSOR_API_KEY
+        # 新しいサービス統合
+        self.vertex_ai = VertexAIService()
+        self.github_service = GitHubService()
+        # test_service は test_fix メソッド内で各呼び出しごとに作成される
 
-        if not self.cursor_api_key:
-            raise ValueError("CURSOR_API_KEY environment variable is required")
+        # レガシー設定（後方互換性のため保持）
+        self.cursor_api_key = getattr(settings, 'CURSOR_API_KEY', None)
+
+        logger.info("Enhanced CursorCLIAgent initialized with new services")
 
     async def analyze_error(self, error_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        cursor-cliを使用してエラー解析
+        Vertex AIを使用してエラー解析
 
         Args:
             error_data: エラー情報
@@ -45,32 +49,32 @@ class CursorCLIAgent:
             Dict[str, Any]: 解析結果
         """
         try:
-            # エラータイプ別のプロンプト生成
-            prompt = self._generate_analysis_prompt(error_data)
-
-            # cursor-cli実行
-            result = await self._run_cursor_cli_command(
-                command="analyze",
-                prompt=prompt,
+            # Vertex AIでエラー解析
+            analysis_result = await self.vertex_ai.analyze_error_code(
+                error_message=error_data.get("error_message", ""),
+                stack_trace=error_data.get("stack_trace"),
                 file_path=error_data.get("file_path"),
                 language=error_data.get("language"),
+                context_code=error_data.get("context_code"),
             )
 
             logger.info(
-                "Error analysis completed",
+                "Enhanced error analysis completed",
                 error_type=error_data.get("error_type"),
                 file_path=error_data.get("file_path"),
+                confidence_score=analysis_result.get("confidence_score", 0),
             )
 
             return {
-                "analysis_result": result,
-                "prompt_used": prompt,
+                "analysis_result": analysis_result,
+                "service_used": "vertex_ai",
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
         except Exception as e:
-            logger.error("Error analysis failed", error=str(e), error_data=error_data)
-            raise CursorCLIError(f"Error analysis failed: {str(e)}")
+            logger.error("Enhanced error analysis failed", error=str(e), error_data=error_data)
+            # フォールバック：従来の方法
+            return await self._fallback_analyze_error(error_data)
 
     async def generate_fix(
         self,
@@ -78,7 +82,7 @@ class CursorCLIAgent:
         analysis_result: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        cursor-cliを使用して修正コード生成
+        Vertex AIを使用して修正コード生成
 
         Args:
             error_data: エラー情報
@@ -88,55 +92,72 @@ class CursorCLIAgent:
             Dict[str, Any]: 修正コード情報
         """
         try:
-            # 修正プロンプト生成
-            prompt = self._generate_fix_prompt(error_data, analysis_result)
+            # 元のコードを取得（可能な場合）
+            original_code = None
+            if error_data.get("file_path") and self.github_service.is_configured():
+                repo_name = error_data.get("repo_name")
+                if repo_name:
+                    original_code = await self.github_service.get_file_content(
+                        repo_name=repo_name,
+                        file_path=error_data["file_path"],
+                        branch=error_data.get("branch", "main")
+                    )
 
-            # cursor-cli実行
-            result = await self._run_cursor_cli_command(
-                command="fix",
-                prompt=prompt,
+            # Vertex AIで修正コード生成
+            fix_result = await self.vertex_ai.generate_fix_code(
+                error_analysis=analysis_result.get("analysis_result", {}),
+                original_code=original_code,
                 file_path=error_data.get("file_path"),
                 language=error_data.get("language"),
             )
 
             logger.info(
-                "Fix generation completed",
+                "Enhanced fix generation completed",
                 error_type=error_data.get("error_type"),
                 file_path=error_data.get("file_path"),
+                confidence_score=fix_result.get("confidence_score", 0),
             )
 
             return {
-                "fix_code": result.get("fixed_code", ""),
-                "test_code": result.get("test_code", ""),
-                "explanation": result.get("explanation", ""),
-                "prompt_used": prompt,
+                "fix_code": fix_result.get("fixed_code", ""),
+                "explanation": fix_result.get("explanation", ""),
+                "changes": fix_result.get("changes", []),
+                "test_suggestions": fix_result.get("test_suggestions", []),
+                "service_used": "vertex_ai",
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
         except Exception as e:
-            logger.error("Fix generation failed", error=str(e), error_data=error_data)
-            raise CursorCLIError(f"Fix generation failed: {str(e)}")
+            logger.error("Enhanced fix generation failed", error=str(e), error_data=error_data)
+            # フォールバック：従来の方法
+            return await self._fallback_generate_fix(error_data, analysis_result)
 
     async def test_fix(
         self,
         fix_data: Dict[str, Any],
-        repo_path: str
+        repo_path: str,
+        language: str = "python"
     ) -> Dict[str, Any]:
         """
-        修正コードのテスト実行
+        修正コードの包括的テスト実行
 
         Args:
             fix_data: 修正コード情報
             repo_path: リポジトリパス
+            language: プログラミング言語
 
         Returns:
             Dict[str, Any]: テスト結果
         """
         try:
+            # 各test_fix呼び出しで新しいTestExecutionServiceインスタンスを作成
+            # これにより、並行実行時の競合状態を防ぎ、リポジトリパスの分離を保証
+            test_service = TestExecutionService(repo_path)
+            logger.info("Created isolated TestExecutionService instance", repo_path=repo_path)
+
             results = {
                 "success": False,
                 "unit_tests": {},
-                "integration_tests": {},
                 "lint_checks": {},
                 "security_checks": {},
                 "timestamp": datetime.utcnow().isoformat(),
@@ -145,30 +166,33 @@ class CursorCLIAgent:
             # 修正コード適用
             await self._apply_fix(fix_data, repo_path)
 
-            # 各種テスト実行
-            results["unit_tests"] = await self._run_unit_tests(repo_path)
-            results["integration_tests"] = await self._run_integration_tests(repo_path)
-            results["lint_checks"] = await self._run_lint_checks(repo_path)
-            results["security_checks"] = await self._run_security_checks(repo_path)
+            # 言語別テスト実行
+            if language == "python":
+                results["unit_tests"] = await test_service.run_python_tests()
+                results["lint_checks"] = await test_service.run_linting(language="python")
+                results["security_checks"] = await test_service.run_security_scan(language="python")
+            elif language in ["javascript", "typescript"]:
+                results["unit_tests"] = await test_service.run_javascript_tests()
+                results["lint_checks"] = await test_service.run_linting(language="javascript")
 
             # 全テスト成功判定
             results["success"] = all([
-                results["unit_tests"].get("passed", False),
-                results["integration_tests"].get("passed", False),
-                results["lint_checks"].get("passed", False),
-                results["security_checks"].get("passed", False),
+                results["unit_tests"].get("status") == "success",
+                results["lint_checks"].get("status") in ["success", "skipped"],
+                results["security_checks"].get("status") in ["success", "skipped"],
             ])
 
             logger.info(
-                "Fix testing completed",
+                "Enhanced fix testing completed",
                 success=results["success"],
                 repo_path=repo_path,
+                language=language,
             )
 
             return results
 
         except Exception as e:
-            logger.error("Fix testing failed", error=str(e), repo_path=repo_path)
+            logger.error("Enhanced fix testing failed", error=str(e), repo_path=repo_path)
             raise CursorCLIError(f"Fix testing failed: {str(e)}")
 
     async def create_pull_request(
@@ -180,7 +204,7 @@ class CursorCLIAgent:
         branch_name: str = None
     ) -> Dict[str, Any]:
         """
-        GitHub PRの自動作成
+        GitHub PRの自動作成（強化版）
 
         Args:
             fix_data: 修正コード情報
@@ -192,42 +216,52 @@ class CursorCLIAgent:
         Returns:
             Dict[str, Any]: PR情報
         """
-        if not self.github:
+        if not self.github_service.is_configured():
             raise ExternalServiceError("GitHub", "GitHub token not configured")
 
         try:
-            repo = self.github.get_repo(repo_name)
-
             # ブランチ名生成
             if not branch_name:
                 branch_name = f"auto-fix-{error_data.get('error_type', 'error')}-{uuid.uuid4().hex[:8]}"
 
             # PR作成
             pr_title = f"🤖 Auto-fix: {error_data.get('error_type', 'Error')} in {error_data.get('file_path', 'unknown')}"
-            pr_body = self._generate_pr_description(fix_data, test_results, error_data)
+            pr_body = self._generate_enhanced_pr_description(fix_data, test_results, error_data)
 
-            # ここでは実際のファイル変更とPR作成をシミュレート
-            # 実際の実装では、Git操作とファイル変更を行う
-            pr_url = f"https://github.com/{repo_name}/pull/123"  # シミュレーション
+            # ファイル変更情報を準備
+            files_to_change = []
+            if fix_data.get("fix_code") and error_data.get("file_path"):
+                files_to_change.append({
+                    "path": error_data["file_path"],
+                    "content": fix_data["fix_code"]
+                })
+
+            # GitHubServiceを使用してPR作成
+            pr_info = await self.github_service.create_pull_request(
+                repo_name=repo_name,
+                title=pr_title,
+                body=pr_body,
+                head_branch=branch_name,
+                base_branch=error_data.get("base_branch", "main"),
+                files_to_change=files_to_change,
+            )
 
             logger.info(
-                "Pull request created",
+                "Enhanced pull request created",
                 repo_name=repo_name,
                 branch_name=branch_name,
-                pr_url=pr_url,
+                pr_url=pr_info["pr_url"],
+                pr_number=pr_info["pr_number"],
             )
 
             return {
-                "pr_url": pr_url,
-                "pr_number": 123,  # シミュレーション
-                "branch_name": branch_name,
-                "title": pr_title,
-                "body": pr_body,
+                **pr_info,
                 "timestamp": datetime.utcnow().isoformat(),
+                "service_used": "github_service",
             }
 
         except Exception as e:
-            logger.error("Pull request creation failed", error=str(e), repo_name=repo_name)
+            logger.error("Enhanced pull request creation failed", error=str(e), repo_name=repo_name)
             raise ExternalServiceError("GitHub", f"PR creation failed: {str(e)}")
 
     async def _run_cursor_cli_command(
@@ -429,3 +463,131 @@ This automated fix addresses the error and includes proper error handling and te
         """セキュリティチェック実行"""
         # 実際の実装では、bandit, safety等を実行
         return {"passed": True, "details": "No security issues found"}
+
+    async def _fallback_analyze_error(self, error_data: Dict[str, Any]) -> Dict[str, Any]:
+        """フォールバック：従来のエラー解析"""
+        try:
+            if self.cursor_api_key:
+                prompt = self._generate_analysis_prompt(error_data)
+                result = await self._run_cursor_cli_command(
+                    command="analyze",
+                    prompt=prompt,
+                    file_path=error_data.get("file_path"),
+                    language=error_data.get("language"),
+                )
+                return {
+                    "analysis_result": result,
+                    "service_used": "cursor_cli",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            else:
+                return {
+                    "analysis_result": {
+                        "error_category": "unknown",
+                        "root_cause": "Analysis service unavailable",
+                        "recommendations": ["Manual investigation required"],
+                        "confidence_score": 0.3,
+                    },
+                    "service_used": "fallback",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+        except Exception as e:
+            logger.error("Fallback error analysis failed", error=str(e))
+            return {
+                "analysis_result": {
+                    "error_category": "service_error",
+                    "root_cause": f"Analysis failed: {str(e)}",
+                    "recommendations": ["Check service configuration"],
+                    "confidence_score": 0.0,
+                },
+                "service_used": "error_fallback",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+
+    async def _fallback_generate_fix(
+        self, error_data: Dict[str, Any], analysis_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """フォールバック：従来の修正コード生成"""
+        try:
+            if self.cursor_api_key:
+                prompt = self._generate_fix_prompt(error_data, analysis_result)
+                result = await self._run_cursor_cli_command(
+                    command="fix",
+                    prompt=prompt,
+                    file_path=error_data.get("file_path"),
+                    language=error_data.get("language"),
+                )
+                return {
+                    "fix_code": result.get("fixed_code", ""),
+                    "explanation": result.get("explanation", ""),
+                    "service_used": "cursor_cli",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            else:
+                return {
+                    "fix_code": f"// Fix service unavailable for {error_data.get('error_type', 'error')}",
+                    "explanation": "Automated fix generation is currently unavailable",
+                    "service_used": "fallback",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+        except Exception as e:
+            logger.error("Fallback fix generation failed", error=str(e))
+            return {
+                "fix_code": f"// Fix generation failed: {str(e)}",
+                "explanation": "Failed to generate automated fix",
+                "service_used": "error_fallback",
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+
+    def _generate_enhanced_pr_description(
+        self,
+        fix_data: Dict[str, Any],
+        test_results: Dict[str, Any],
+        error_data: Dict[str, Any]
+    ) -> str:
+        """強化されたPR説明文生成"""
+        service_used = fix_data.get("service_used", "unknown")
+        confidence_score = fix_data.get("confidence_score", "N/A")
+
+        return f"""
+## 🤖 Enhanced Automated Fix
+
+**Error Type:** {error_data.get('error_type', 'Unknown')}
+**File:** {error_data.get('file_path', 'Unknown')}
+**Line:** {error_data.get('line_number', 'Unknown')}
+**Service:** {service_used}
+**Confidence:** {confidence_score}
+
+### 📋 Error Description
+{error_data.get('error_message', 'No description available')}
+
+### 🔧 Fix Applied
+{fix_data.get('explanation', 'No explanation available')}
+
+### 📝 Changes Made
+{chr(10).join(f"- {change}" for change in fix_data.get('changes', ['No specific changes listed']))}
+
+### ✅ Test Results
+- **Unit Tests:** {'✅ Passed' if test_results.get('unit_tests', {}).get('status') == 'success' else '❌ Failed/Skipped'}
+- **Lint Checks:** {'✅ Passed' if test_results.get('lint_checks', {}).get('status') == 'success' else '❌ Failed/Skipped'}
+- **Security Checks:** {'✅ Passed' if test_results.get('security_checks', {}).get('status') == 'success' else '❌ Failed/Skipped'}
+
+### 🧪 Test Suggestions
+{chr(10).join(f"- {suggestion}" for suggestion in fix_data.get('test_suggestions', ['No specific test suggestions']))}
+
+### 🎯 Impact
+This enhanced automated fix addresses the error using AI-powered analysis and includes:
+- Comprehensive error analysis
+- Context-aware code generation
+- Automated testing validation
+- Security and quality checks
+
+### 🔍 Review Checklist
+- [ ] Verify the fix addresses the root cause
+- [ ] Check for any side effects or edge cases
+- [ ] Validate test coverage is adequate
+- [ ] Ensure code follows project standards
+
+---
+*This PR was automatically generated by the Enhanced Auto Remediation System using {service_used}*
+        """

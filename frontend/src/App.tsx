@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { ChatPage } from '@/pages/ChatPage';
+import { ErrorsPage } from '@/pages/ErrorsPage';
+import { ErrorDetailPage } from '@/pages/ErrorDetailPage';
 
 // React Query クライアント設定
 const queryClient = new QueryClient({
@@ -120,6 +122,22 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <ChatPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/errors"
+        element={
+          <ProtectedRoute>
+            <ErrorsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/errors/:incidentId"
+        element={
+          <ProtectedRoute>
+            <ErrorDetailPage />
           </ProtectedRoute>
         }
       />
