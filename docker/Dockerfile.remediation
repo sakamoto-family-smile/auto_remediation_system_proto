@@ -1,0 +1,49 @@
+# cursor-cli + Python改修エージェント用Dockerfile
+FROM python:3.11-slim
+
+# 作業ディレクトリ設定
+WORKDIR /app
+
+# システムパッケージ更新・必要なパッケージインストール
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js インストール（cursor-cli用）
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# cursor-cli インストール
+RUN npm install -g cursor-cli
+
+# Python依存関係ファイルをコピー
+COPY backend/requirements.txt .
+
+# Python依存関係インストール
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 改修エージェントコードをコピー
+COPY remediation/ ./remediation/
+COPY backend/app/ ./app/
+
+# Git設定（改修用）
+RUN git config --global user.name "Auto Remediation Bot" \
+    && git config --global user.email "auto-remediation@example.com"
+
+# 非rootユーザー作成
+RUN useradd --create-home --shell /bin/bash remediation \
+    && chown -R remediation:remediation /app
+USER remediation
+
+# 作業ディレクトリ作成
+RUN mkdir -p /app/workspace
+
+# 改修エージェント起動スクリプト
+COPY docker/scripts/run-remediation.sh /app/run-remediation.sh
+RUN chmod +x /app/run-remediation.sh
+
+# エントリーポイント
+ENTRYPOINT ["/app/run-remediation.sh"]

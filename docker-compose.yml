@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # PostgreSQL データベース
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: auto_remediation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis（セッション・キャッシュ）
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI バックエンド
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    environment:
+      # データベース設定
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/auto_remediation
+
+      # アプリケーション設定
+      DEBUG: "true"
+      SECRET_KEY: "your-secret-key-here"
+      ALLOWED_ORIGINS: '["http://localhost:3000"]'
+
+      # Google Cloud設定（開発環境では無効化）
+      GOOGLE_CLOUD_PROJECT: "your-project-id"
+      VERTEX_AI_LOCATION: "asia-northeast1"
+
+      # Firebase設定（開発環境では無効化）
+      FIREBASE_PROJECT_ID: "your-firebase-project"
+
+      # cursor-cli設定
+      CURSOR_API_KEY: "${CURSOR_API_KEY}"
+
+      # GitHub設定
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+
+      # Slack設定
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
+      SLACK_SIGNING_SECRET: "${SLACK_SIGNING_SECRET}"
+
+      # ログ設定
+      LOG_LEVEL: "DEBUG"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 改修エージェント（Cloud Run Jobsシミュレーション）
+  remediation-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.remediation
+    environment:
+      # cursor-cli設定
+      CURSOR_API_KEY: "${CURSOR_API_KEY}"
+      CURSOR_CLI_TIMEOUT: "300"
+
+      # GitHub設定
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+
+      # Slack設定
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
+
+      # データベース設定
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/auto_remediation
+
+      # ログ設定
+      LOG_LEVEL: "DEBUG"
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./remediation:/app/remediation
+      - remediation_workspace:/app/workspace
+    profiles:
+      - remediation  # docker-compose --profile remediation up で起動
+
+  # React フロントエンド（開発環境）
+  frontend:
+    image: node:18-alpine
+    working_dir: /app
+    environment:
+      REACT_APP_API_URL: http://localhost:8000/api/v1
+      REACT_APP_FIREBASE_CONFIG: '{"apiKey":"your-api-key"}'
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm start"
+    depends_on:
+      - backend
+    profiles:
+      - frontend  # docker-compose --profile frontend up で起動
+
+volumes:
+  postgres_data:
+  remediation_workspace:

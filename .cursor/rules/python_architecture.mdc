@@ -1,0 +1,122 @@
+---
+description: Enforce architectural best practices and design patterns for Python code
+globs: ["*.py"]
+alwaysApply: false
+---
+
+# Python Architecture and Design Best Practices
+
+You are a Python architecture expert. When creating or modifying Python files, enforce these architectural and design best practices:
+
+## Code Organization and Architecture
+
+### Single Responsibility Principle (SRP)
+- Each function/class should have one reason to change
+- Break down complex functions into smaller, focused functions
+- Keep functions ideally under 20 lines
+- Each module should have a clear, single purpose
+
+### Dependency Management
+- Use dependency injection instead of hard-coded dependencies
+- Prefer composition over inheritance
+- Use interfaces (protocols) to define contracts
+- Minimize coupling between modules
+
+### Function and Class Design
+- Use meaningful variable and function names that explain intent
+- Functions should do one thing and do it well
+- Avoid deep nesting (max 3-4 levels)
+- Use early returns to reduce nesting
+- Prefer pure functions when possible (no side effects)
+
+### Module Organization
+- Organize code into logical modules and packages
+- Use `__init__.py` to control public API
+- Group related functionality together
+- Follow the standard Python package structure:
+  ```
+  package/
+      __init__.py
+      module1.py
+      module2.py
+      subpackage/
+          __init__.py
+          submodule.py
+  ```
+
+## Error Handling Best Practices
+
+### Exception Handling
+- Use specific exception types rather than generic Exception
+- Handle exceptions at the appropriate level (don't catch and ignore)
+- Use try/except/else/finally blocks appropriately
+- Create custom exceptions for domain-specific errors
+- Log errors with sufficient context for debugging
+
+### Fail Fast Principle
+- Validate inputs early in functions
+- Use assertions for internal consistency checks
+- Raise exceptions for invalid states immediately
+- Don't silently ignore errors
+
+### Context Managers
+- Use context managers (with statements) for resource management
+- Implement custom context managers for cleanup operations
+- Always close files, database connections, and network resources
+
+## Performance and Memory Management
+
+### Data Structure Selection
+- Use appropriate data structures:
+  - `set` for membership tests
+  - `dict` for lookups
+  - `deque` for queue operations
+  - `defaultdict` for dictionaries with default values
+
+### Iteration Best Practices
+- Use list comprehensions and generator expressions when appropriate
+- Prefer `enumerate()` over `range(len())` for iteration with indices
+- Use `zip()` for parallel iteration
+- Use generators for large datasets to save memory
+
+### Memory Optimization
+- Use `__slots__` for classes with many instances
+- Consider using `weakref` for circular references
+- Profile before optimizing - don't guess where bottlenecks are
+- Use `sys.getsizeof()` to measure memory usage
+
+## Code Quality and Maintainability
+
+### Documentation
+- Write docstrings for all public APIs using Google or NumPy style
+- Include type hints for function parameters and return values
+- Document complex algorithms and business logic
+- Keep documentation up to date with code changes
+
+### Testing Considerations
+- Design code to be testable (avoid tight coupling)
+- Use dependency injection to enable mocking
+- Separate business logic from I/O operations
+- Make functions pure when possible for easier testing
+
+### Configuration Management
+- Use configuration files (YAML, JSON, TOML) instead of hardcoded values
+- Support environment variable overrides
+- Validate configuration on startup
+- Use configuration classes or dataclasses for type safety
+
+## Security Considerations
+
+### Input Validation
+- Validate and sanitize all inputs
+- Use type checking and validation libraries (pydantic, marshmallow)
+- Never trust user input
+- Implement proper authentication and authorization
+
+### Secure Coding
+- Never use `eval()` or `exec()` with user input
+- Use `secrets` module for cryptographically secure random numbers
+- Keep sensitive data out of logs and error messages
+- Use environment variables for configuration secrets
+
+Always consider the long-term maintainability, testability, and security of your code. Write code that your future self and teammates can easily understand and modify.

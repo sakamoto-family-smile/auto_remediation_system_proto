@@ -1,0 +1,135 @@
+---
+description: Enforce PEP 8 coding standards for Python files
+globs: ["*.py"]
+alwaysApply: false
+---
+
+# Python PEP 8 Style Guide
+
+You are a Python coding assistant that strictly follows PEP 8 style guidelines. When creating or modifying Python files, enforce these rules:
+
+## Core Philosophy
+- Code is read more often than it is written
+- Readability counts (PEP 20) - "Beautiful is better than ugly"
+- Consistency is important, but consistency within a project is more important
+- Consistency within a module or function is most important
+- Simple is better than complex, complex is better than complicated
+- Explicit is better than implicit
+
+## Code Layout
+
+### Indentation
+- Use 4 spaces per indentation level (never tabs)
+- For continuation lines, align wrapped elements vertically using Python's implicit line joining
+- Use hanging indents when necessary, with no arguments on the first line
+
+### Line Length
+- Limit all lines to a maximum of 79 characters
+- For docstrings or comments, limit to 72 characters
+- Use parentheses for line continuation rather than backslashes
+
+### Binary Operators
+- Break before binary operators for better readability:
+```python
+# Correct
+income = (gross_wages
+          + taxable_interest
+          + (dividends - qualified_dividends)
+          - ira_deduction
+          - student_loan_interest)
+```
+
+### Blank Lines
+- Surround top-level function and class definitions with two blank lines
+- Method definitions inside a class are surrounded by a single blank line
+- Use blank lines in functions sparingly to indicate logical sections
+
+### Imports
+- Imports should be on separate lines
+- Group imports in this order:
+  1. Standard library imports
+  2. Related third-party imports
+  3. Local application/library specific imports
+- Put a blank line between each group
+- Use absolute imports when possible
+- Avoid wildcard imports (`from module import *`)
+
+## String Quotes
+- Use single quotes for strings, but be consistent within a file
+- Use double quotes for strings containing single quotes
+- Use triple double quotes for docstrings
+
+## Whitespace in Expressions and Statements
+
+### Avoid Extraneous Whitespace
+- Immediately inside parentheses, brackets or braces
+- Between a trailing comma and a following close parenthesis
+- Immediately before a comma, semicolon, or colon
+- Around the = sign when used for keyword arguments or default parameters
+
+### Use Whitespace
+- Around arithmetic operators
+- Around comparison operators
+- Around boolean operators
+- After commas in function arguments and list items
+
+## Comments
+
+### Block Comments
+- Start with # and a single space
+- Each line should start with # and a single space
+- Separate paragraphs with a line containing only #
+
+### Inline Comments
+- Use sparingly
+- Separate from the statement by at least two spaces
+- Start with # and a single space
+- Avoid stating the obvious
+
+### Docstrings
+- Write docstrings for all public modules, functions, classes, and methods
+- Use triple double quotes for all docstrings
+- For one-line docstrings, keep the closing quotes on the same line
+
+## Naming Conventions
+
+### Function and Variable Names
+- Use lowercase with words separated by underscores: `function_name`, `variable_name`
+- Be descriptive but not overly verbose
+
+### Class Names
+- Use CapWords convention: `ClassName`
+- Use the suffix "Error" for exception classes
+
+### Constants
+- Use all capital letters with underscores: `MAX_OVERFLOW`, `TOTAL`
+
+### Method Names and Instance Variables
+- Use lowercase with words separated by underscores
+- Use one leading underscore for non-public methods and instance variables
+- Use two leading underscores to invoke Python's name mangling rules
+
+### Module Names
+- Use short, all-lowercase names
+- Underscores can be used if it improves readability
+
+## Programming Recommendations
+
+### General
+- Comparisons to singletons like None should use `is` or `is not`
+- Use `is not` rather than `not ... is`
+- Use def statements instead of lambda assignments
+- Derive exceptions from Exception rather than BaseException
+- Use string methods instead of the string module
+- Use `''.startswith()` and `''.endswith()` instead of string slicing
+- Object type comparisons should use isinstance() instead of type()
+- For sequences (strings, lists, tuples), use the fact that empty sequences are false
+- Don't compare boolean values to True or False using ==
+
+### Type Annotations
+- Use type annotations as specified in PEP 484
+- Put a space after the colon in variable annotations
+- No space before the colon
+- If there's an assignment, put spaces around the equals sign
+
+Always prioritize code readability and consistency. When in doubt, follow the principle that explicit is better than implicit.

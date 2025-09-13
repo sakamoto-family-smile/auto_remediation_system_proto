@@ -1,0 +1,501 @@
+---
+description: Enforce FastAPI best practices and database operations in Python
+globs: ["*.py"]
+alwaysApply: false
+---
+
+# Python FastAPI and Database Best Practices
+
+You are a Python backend development expert specializing in FastAPI. When creating or modifying Python files that involve APIs or database operations, enforce these FastAPI-specific best practices:
+
+## FastAPI Framework Requirements
+
+### Mandatory Framework Usage
+- ALWAYS use FastAPI for API development (never Flask, Django REST, or other frameworks)
+- Use FastAPI's built-in features for validation, serialization, and documentation
+- Leverage FastAPI's automatic OpenAPI/Swagger documentation generation
+- Use FastAPI's dependency injection system for clean architecture
+
+### FastAPI Project Structure
+```python
+# main.py - FastAPI application entry point
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import uvicorn
+
+app = FastAPI(
+    title="Your API",
+    description="API description",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+## FastAPI API Design Best Practices
+
+### REST API Design with FastAPI
+- Use FastAPI's automatic HTTP method decorators (@app.get, @app.post, etc.)
+- Follow REST principles consistently
+- Use appropriate HTTP methods (GET, POST, PUT, PATCH, DELETE)
+- Design clear and consistent URL patterns with FastAPI's path parameters
+- Use FastAPI's automatic HTTP status codes and custom status codes when needed
+- Leverage FastAPI's automatic request/response validation
+
+### FastAPI Endpoint Structure
+```python
+from fastapi import FastAPI, HTTPException, Depends, status
+from pydantic import BaseModel
+from typing import Optional, List
+
+app = FastAPI()
+
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    age: Optional[int] = None
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    age: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+@app.post("/api/v1/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(user_data: UserCreate) -> UserResponse:
+    """Create a new user."""
+    try:
+        user = await user_service.create_user(user_data)
+        return UserResponse.from_orm(user)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to create user: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/v1/users/{user_id}", response_model=UserResponse)
+async def get_user(user_id: int) -> UserResponse:
+    """Get user by ID."""
+    try:
+        user = await user_service.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return UserResponse.from_orm(user)
+    except Exception as e:
+        logger.error(f"Failed to get user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/v1/users", response_model=List[UserResponse])
+async def list_users(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user)
+) -> List[UserResponse]:
+    """List users with pagination."""
+    users = await user_service.get_users(skip=skip, limit=limit)
+    return [UserResponse.from_orm(user) for user in users]
+```
+
+### FastAPI Request/Response Handling
+- ALWAYS use Pydantic models for request/response validation (mandatory in FastAPI)
+- Use FastAPI's automatic validation and serialization features
+- Implement proper input validation using Pydantic validators
+- Use FastAPI's Query, Path, Body, and Header parameters appropriately
+- Leverage FastAPI's automatic OpenAPI documentation for all endpoints
+- Handle pagination using FastAPI's Query parameters
+
+```python
+from fastapi import FastAPI, Query, Path, Body, Header
+from pydantic import BaseModel, validator
+from typing import Optional, List
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    age: Optional[int] = None
+
+    @validator('email')
+    def validate_email(cls, v):
+        if v and '@' not in v:
+            raise ValueError('Invalid email format')
+        return v
+
+@app.put("/api/v1/users/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int = Path(..., gt=0, description="User ID"),
+    user_data: UserUpdate = Body(...),
+    x_request_id: Optional[str] = Header(None)
+) -> UserResponse:
+    """Update user information."""
+    # Implementation here
+    pass
+
+@app.get("/api/v1/users", response_model=List[UserResponse])
+async def list_users(
+    skip: int = Query(0, ge=0, description="Number of users to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of users to return"),
+    search: Optional[str] = Query(None, min_length=1, description="Search term")
+) -> List[UserResponse]:
+    """List users with pagination and search."""
+    # Implementation here
+    pass
+```
+
+### FastAPI Dependency Injection
+- Use FastAPI's Depends() for dependency injection
+- Create reusable dependencies for common operations
+- Use sub-dependencies for complex dependency chains
+- Implement authentication dependencies
+
+```python
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> User:
+    """Get current authenticated user."""
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = await user_service.get_user(user_id)
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+async def get_admin_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Ensure current user is admin."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+```
+
+### FastAPI Middleware and CORS
+- Use FastAPI's built-in middleware system
+- Implement CORS properly using CORSMiddleware
+- Add custom middleware for logging, authentication, etc.
+- Use middleware for cross-cutting concerns
+
+### FastAPI API Versioning
+- Version your APIs using FastAPI routers and prefixes
+- Use APIRouter for organizing endpoints
+- Maintain backward compatibility when possible
+- Document breaking changes clearly
+
+```python
+from fastapi import APIRouter
+
+# Version 1 router
+v1_router = APIRouter(prefix="/api/v1", tags=["v1"])
+
+@v1_router.get("/users")
+async def list_users_v1():
+    # V1 implementation
+    pass
+
+# Version 2 router
+v2_router = APIRouter(prefix="/api/v2", tags=["v2"])
+
+@v2_router.get("/users")
+async def list_users_v2():
+    # V2 implementation with new features
+    pass
+
+# Include routers in main app
+app.include_router(v1_router)
+app.include_router(v2_router)
+```
+
+### FastAPI Authentication and Authorization
+- Use FastAPI Security utilities (OAuth2PasswordBearer, HTTPBearer)
+- Implement JWT authentication with FastAPI
+- Use dependency injection for role-based access control
+- Leverage FastAPI's automatic security documentation
+
+## Database Best Practices
+
+### Connection Management
+- Use connection pooling for database connections
+- Implement proper connection lifecycle management
+- Handle connection failures gracefully
+- Use async database drivers when possible
+
+### Query Optimization
+- Use parameterized queries to prevent SQL injection
+- Index frequently queried columns
+- Avoid N+1 query problems
+- Use database query optimization techniques
+- Monitor query performance
+
+### Transaction Management
+```python
+async def transfer_money(from_account_id: int, to_account_id: int, amount: Decimal):
+    """Transfer money between accounts with proper transaction handling."""
+    async with database.transaction():
+        try:
+            # Debit from source account
+            await account_service.debit(from_account_id, amount)
+
+            # Credit to destination account
+            await account_service.credit(to_account_id, amount)
+
+            # Log transaction
+            await transaction_service.log_transfer(
+                from_account_id, to_account_id, amount
+            )
+        except InsufficientFundsError:
+            raise HTTPException(status_code=400, detail="Insufficient funds")
+        except Exception as e:
+            logger.error(f"Transfer failed: {e}")
+            raise HTTPException(status_code=500, detail="Transfer failed")
+```
+
+### ORM Best Practices
+- Use appropriate ORM patterns (Active Record vs Data Mapper)
+- Implement proper model relationships
+- Use lazy loading judiciously
+- Implement database migrations properly
+- Keep models focused and avoid god objects
+
+### Database Schema Design
+- Use appropriate data types for columns
+- Implement proper foreign key constraints
+- Use database-level validations where appropriate
+- Design for scalability and performance
+- Document schema changes with migrations
+
+## FastAPI Error Handling and Logging
+
+### FastAPI Exception Handling
+- Use FastAPI's HTTPException for standard HTTP errors
+- Implement custom exception handlers using @app.exception_handler
+- Use FastAPI's automatic validation error responses
+- Create custom exception classes for domain-specific errors
+
+```python
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, ValidationError
+from enum import Enum
+from typing import Optional
+
+app = FastAPI()
+
+class ErrorCode(str, Enum):
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+    INVALID_INPUT = "INVALID_INPUT"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    AUTHENTICATION_ERROR = "AUTHENTICATION_ERROR"
+
+class ErrorResponse(BaseModel):
+    error_code: ErrorCode
+    message: str
+    details: Optional[dict] = None
+
+class CustomDomainException(Exception):
+    """Base exception for domain-specific errors."""
+    def __init__(self, error_code: ErrorCode, message: str, details: dict = None):
+        self.error_code = error_code
+        self.message = message
+        self.details = details or {}
+
+@app.exception_handler(CustomDomainException)
+async def custom_domain_exception_handler(request: Request, exc: CustomDomainException):
+    return JSONResponse(
+        status_code=400,
+        content=ErrorResponse(
+            error_code=exc.error_code,
+            message=exc.message,
+            details=exc.details
+        ).dict()
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content=ErrorResponse(
+            error_code=ErrorCode.INVALID_INPUT,
+            message="Validation failed",
+            details={"errors": exc.errors()}
+        ).dict()
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            error_code=ErrorCode.INTERNAL_ERROR,
+            message=exc.detail,
+            details={"status_code": exc.status_code}
+        ).dict()
+    )
+```
+
+### Database Error Handling
+- Handle database connection errors appropriately
+- Implement retry logic for transient failures
+- Log database errors with sufficient context
+- Use database-specific exception types
+- Implement circuit breaker patterns for resilience
+
+### Logging for APIs and Databases
+```python
+import structlog
+
+logger = structlog.get_logger()
+
+async def create_user(user_data: UserCreate) -> User:
+    """Create a new user with proper logging."""
+    logger.info("Creating user", user_email=user_data.email)
+
+    try:
+        # Validate user data
+        validated_data = await validate_user_data(user_data)
+
+        # Create user in database
+        user = await user_repository.create(validated_data)
+
+        logger.info(
+            "User created successfully",
+            user_id=user.id,
+            user_email=user.email
+        )
+
+        return user
+
+    except ValidationError as e:
+        logger.warning(
+            "User creation failed - validation error",
+            user_email=user_data.email,
+            errors=str(e)
+        )
+        raise
+
+    except DatabaseError as e:
+        logger.error(
+            "User creation failed - database error",
+            user_email=user_data.email,
+            error=str(e)
+        )
+        raise
+```
+
+## Security Best Practices
+
+### API Security
+- Implement rate limiting to prevent abuse
+- Use HTTPS for all API communications
+- Validate and sanitize all inputs
+- Implement proper CORS policies
+- Use security headers (HSTS, CSP, etc.)
+
+### Database Security
+- Use parameterized queries to prevent SQL injection
+- Implement proper access controls at the database level
+- Encrypt sensitive data at rest and in transit
+- Regularly audit database access logs
+- Use database connection encryption
+
+### Authentication and Session Management
+```python
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Generate password hash."""
+    return pwd_context.hash(password)
+
+async def authenticate_user(email: str, password: str) -> Optional[User]:
+    """Authenticate user with email and password."""
+    user = await user_repository.get_by_email(email)
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+```
+
+## Performance and Scalability
+
+### Caching Strategies
+- Implement appropriate caching layers (Redis, Memcached)
+- Use cache invalidation strategies
+- Cache database query results when appropriate
+- Implement API response caching
+
+### Monitoring and Metrics
+- Implement health check endpoints
+- Monitor API response times and error rates
+- Track database query performance
+- Use structured logging for better observability
+- Implement distributed tracing for microservices
+
+## FastAPI Specific Requirements Summary
+
+### Mandatory FastAPI Usage
+- NEVER use Flask, Django REST Framework, or any other Python web framework for API development
+- ALWAYS use FastAPI for all new API projects
+- Use FastAPI's built-in features: automatic validation, serialization, OpenAPI docs
+- Leverage FastAPI's dependency injection system for clean architecture
+- Use Pydantic models for all request/response schemas
+- Implement proper async/await patterns with FastAPI
+
+### FastAPI Project Dependencies
+When creating FastAPI projects, include these essential dependencies:
+```python
+# requirements.txt for FastAPI projects
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+pydantic>=2.0.0
+python-jose[cryptography]  # For JWT
+python-multipart  # For form data
+python-dotenv  # For environment variables
+sqlalchemy>=2.0.0  # For database ORM
+alembic  # For database migrations
+asyncpg  # For PostgreSQL async support
+redis  # For caching
+pytest  # For testing
+httpx  # For async HTTP client in tests
+```
+
+### FastAPI Development Standards
+- Use async/await for all endpoint handlers when possible
+- Implement proper OpenAPI documentation with descriptions, examples, and tags
+- Use FastAPI's automatic dependency injection for database sessions, authentication, etc.
+- Follow FastAPI's recommended project structure with routers and dependencies
+- Use FastAPI's built-in security features (OAuth2, JWT, etc.)
+- Leverage FastAPI's automatic request/response validation and serialization
+
+Always prioritize FastAPI-specific patterns, security, performance, and maintainability. Follow FastAPI's official documentation and established patterns in the FastAPI ecosystem.

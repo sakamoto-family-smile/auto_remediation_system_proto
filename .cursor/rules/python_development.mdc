@@ -1,0 +1,184 @@
+---
+description: Enforce development workflow and tooling best practices for Python projects
+globs: ["*.py"]
+alwaysApply: false
+---
+
+# Python Development Best Practices
+
+You are a Python development expert. When creating or modifying Python files, enforce these development best practices:
+
+## Testing Best Practices
+
+### Test-Driven Development
+- Write tests first (TDD) or immediately after implementation
+- Use descriptive test names that explain what is being tested
+- Follow the Arrange-Act-Assert pattern
+- Test both happy paths and edge cases
+- Aim for high test coverage but focus on critical paths
+
+### Testing Framework and Tools
+- Use pytest as the primary testing framework
+- Use fixtures for test setup and teardown
+- Mock external dependencies properly
+- Use parametrized tests for multiple test cases
+- Organize tests in a logical directory structure
+
+### Test Structure
+```python
+def test_should_return_sum_when_given_two_numbers():
+    # Arrange
+    a, b = 2, 3
+    expected = 5
+
+    # Act
+    result = add(a, b)
+
+    # Assert
+    assert result == expected
+```
+
+## Logging Best Practices
+
+### Logging Configuration
+- Use the `logging` module instead of print statements
+- Configure logging at the application entry point
+- Use appropriate log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- Include contextual information in log messages
+- Use structured logging for production applications
+
+### Logging Patterns
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def process_data(data):
+    logger.info("Processing data", extra={"data_size": len(data)})
+    try:
+        result = expensive_operation(data)
+        logger.debug("Operation completed successfully")
+        return result
+    except Exception as e:
+        logger.error("Operation failed", exc_info=True, extra={"data": data})
+        raise
+```
+
+## Code Quality Tools
+
+### Essential Tools
+- Use `black` for consistent code formatting
+- Use `isort` for import sorting
+- Use `flake8` or `pylint` for linting
+- Use `mypy` for static type checking
+- Use `bandit` for security linting
+
+### Pre-commit Hooks
+- Set up pre-commit hooks to run these tools automatically
+- Ensure code quality checks run before commits
+- Configure tools consistently across the team
+
+### Configuration Example (.pre-commit-config.yaml)
+```yaml
+repos:
+  - repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+      - id: black
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+  - repo: https://github.com/pycqa/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+```
+
+## Dependency Management
+
+### Virtual Environments
+- Use virtual environments for all projects
+- Use `venv`, `virtualenv`, or `conda` for environment management
+- Keep requirements.txt or pyproject.toml up to date
+- Separate development and production dependencies
+
+### Dependency Specification
+- Pin dependency versions in requirements.txt or pyproject.toml
+- Use tools like `pip-tools` or `poetry` for dependency management
+- Regularly update dependencies and check for security vulnerabilities
+- Document why specific versions are pinned
+
+### Requirements Structure
+```
+requirements/
+    base.txt          # Core dependencies
+    development.txt   # Dev dependencies (testing, linting)
+    production.txt    # Production-specific dependencies
+```
+
+## Data Handling Best Practices
+
+### File Operations
+- Use `pathlib` instead of `os.path` for file operations
+- Use context managers for file operations
+- Handle encoding issues explicitly (UTF-8 by default)
+- Validate file paths and handle missing files gracefully
+
+### Data Validation
+- Validate data types and ranges at input boundaries
+- Use appropriate data validation libraries (pydantic, marshmallow)
+- Implement proper error handling for invalid data
+- Use type hints to document expected data structures
+
+### Example with pathlib and validation
+```python
+from pathlib import Path
+from typing import Optional
+
+def read_config_file(config_path: Path) -> Optional[dict]:
+    """Read and validate configuration file."""
+    if not config_path.exists():
+        logger.warning(f"Config file not found: {config_path}")
+        return None
+
+    try:
+        with config_path.open('r', encoding='utf-8') as f:
+            config = json.load(f)
+        return validate_config(config)
+    except (json.JSONDecodeError, ValidationError) as e:
+        logger.error(f"Invalid config file: {e}")
+        return None
+```
+
+## Concurrency Best Practices
+
+### Asyncio for I/O-bound Operations
+- Use `asyncio` for I/O-bound concurrent operations
+- Use `aiohttp` for async HTTP requests
+- Use `asyncpg` or similar for async database operations
+- Properly handle async context managers
+
+### Threading and Multiprocessing
+- Use `threading` for I/O-bound operations (with GIL considerations)
+- Use `multiprocessing` for CPU-bound operations
+- Avoid shared mutable state in concurrent code
+- Use proper synchronization primitives (locks, queues)
+
+### Example async pattern
+```python
+import asyncio
+import aiohttp
+
+async def fetch_data(session: aiohttp.ClientSession, url: str) -> dict:
+    """Fetch data from URL asynchronously."""
+    try:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.json()
+    except aiohttp.ClientError as e:
+        logger.error(f"Failed to fetch {url}: {e}")
+        raise
+```
+
+Always prioritize code maintainability, testability, and reliability. Use the right tool for the job and follow established patterns in the Python ecosystem.
