@@ -57,7 +57,7 @@ async def create_chat_session(
             user_id=current_user["user_id"],
         )
 
-        return ChatSessionResponse.from_orm(session)
+        return ChatSessionResponse.model_validate(session)
 
     except DatabaseError as e:
         logger.error("Failed to create chat session", error=str(e))
@@ -181,7 +181,7 @@ async def get_chat_session(
             user_id=current_user["user_id"],
         )
 
-        return ChatSessionResponse.from_orm(session)
+        return ChatSessionResponse.model_validate(session)
 
     except HTTPException:
         raise
@@ -248,7 +248,7 @@ async def add_chat_message(
             role=message_data.role,
         )
 
-        return ChatMessageResponse.from_orm(message)
+        return ChatMessageResponse.model_validate(message)
 
     except HTTPException:
         raise
@@ -387,8 +387,8 @@ async def chat_completion(
 
         return ChatCompletionResponse(
             session_id=session.id,
-            user_message=ChatMessageResponse.from_orm(user_message),
-            assistant_message=ChatMessageResponse.from_orm(assistant_message),
+            user_message=ChatMessageResponse.model_validate(user_message),
+            assistant_message=ChatMessageResponse.model_validate(assistant_message),
         )
 
     except HTTPException:

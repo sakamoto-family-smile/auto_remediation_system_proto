@@ -54,7 +54,7 @@ async def update_remediation_status(
             user_id=current_user["user_id"],
         )
 
-        return RemediationAttemptResponse.from_orm(attempt)
+        return RemediationAttemptResponse.model_validate(attempt)
 
     except NotFoundError:
         raise HTTPException(

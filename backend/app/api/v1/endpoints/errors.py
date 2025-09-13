@@ -69,7 +69,7 @@ async def create_error_incident(
             severity=incident_data.severity,
         )
 
-        return ErrorIncidentResponse.from_orm(incident)
+        return ErrorIncidentResponse.model_validate(incident)
 
     except DatabaseError as e:
         logger.error("Failed to create error incident", error=str(e))
@@ -124,7 +124,7 @@ async def get_error_incidents(
         )
 
         incident_list = [
-            ErrorIncidentListResponse.from_orm(incident) for incident in incidents
+            ErrorIncidentListResponse.model_validate(incident) for incident in incidents
         ]
 
         logger.debug(
@@ -186,7 +186,7 @@ async def get_error_incident(
             incident_id=str(incident_id),
         )
 
-        return ErrorIncidentResponse.from_orm(incident)
+        return ErrorIncidentResponse.model_validate(incident)
 
     except HTTPException:
         raise
@@ -236,7 +236,7 @@ async def update_incident_status(
             user_id=current_user["user_id"],
         )
 
-        return ErrorIncidentResponse.from_orm(incident)
+        return ErrorIncidentResponse.model_validate(incident)
 
     except NotFoundError:
         raise HTTPException(
@@ -457,7 +457,7 @@ async def create_remediation_attempt(
             user_id=current_user["user_id"],
         )
 
-        return RemediationAttemptResponse.from_orm(attempt)
+        return RemediationAttemptResponse.model_validate(attempt)
 
     except NotFoundError:
         raise HTTPException(
@@ -510,7 +510,7 @@ async def get_remediation_attempt(
             attempt_id=str(attempt_id),
         )
 
-        return RemediationAttemptResponse.from_orm(attempt)
+        return RemediationAttemptResponse.model_validate(attempt)
 
     except HTTPException:
         raise

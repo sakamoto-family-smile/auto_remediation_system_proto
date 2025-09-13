@@ -139,7 +139,7 @@ class ApiService {
   async updateIncidentStatus(incidentId: string, status: string): Promise<ErrorIncidentResponse> {
     const response = await this.client.patch<ErrorIncidentResponse>(
       `/errors/incidents/${incidentId}/status`,
-      { new_status: status }
+      { status: status }
     );
     return response.data;
   }
