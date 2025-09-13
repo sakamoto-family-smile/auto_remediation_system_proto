@@ -19,6 +19,7 @@ import {
   ErrorAnalysisResponse,
   RemediationRequest,
   RemediationResponse,
+  PaginatedErrorIncidentsResponse,
 } from '@/types/api';
 
 class ApiService {
@@ -112,7 +113,7 @@ class ApiService {
     status?: string;
     limit?: number;
     offset?: number;
-  } = {}): Promise<ErrorIncidentListResponse[]> {
+  } = {}): Promise<PaginatedErrorIncidentsResponse> {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -120,7 +121,7 @@ class ApiService {
       }
     });
 
-    const response = await this.client.get<ErrorIncidentListResponse[]>(
+    const response = await this.client.get<PaginatedErrorIncidentsResponse>(
       `/errors/incidents?${queryParams.toString()}`
     );
     return response.data;

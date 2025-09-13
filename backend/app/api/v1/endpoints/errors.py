@@ -3,7 +3,7 @@
 """
 
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -18,6 +18,7 @@ from app.schemas.error import (
     ErrorIncidentListResponse,
     ErrorIncidentResponse,
     IncidentStatusUpdate,
+    PaginatedErrorIncidentsResponse,
     RemediationAttemptCreate,
     RemediationAttemptResponse,
     RemediationRequest,
@@ -30,7 +31,11 @@ router = APIRouter()
 logger = structlog.get_logger()
 
 
-@router.post("/incidents", response_model=ErrorIncidentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/incidents",
+    response_model=ErrorIncidentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_error_incident(
     incident_data: ErrorIncidentCreate,
     current_user: Dict[str, Any] = Depends(AuthService.get_current_user),
@@ -85,7 +90,7 @@ async def create_error_incident(
         )
 
 
-@router.get("/incidents", response_model=List[ErrorIncidentListResponse])
+@router.get("/incidents", response_model=PaginatedErrorIncidentsResponse)
 async def get_error_incidents(
     service_name: Optional[str] = Query(None, description="サービス名フィルター"),
     environment: Optional[str] = Query(None, description="環境フィルター"),
@@ -95,9 +100,9 @@ async def get_error_incidents(
     offset: int = Query(0, ge=0, description="オフセット"),
     current_user: Dict[str, Any] = Depends(AuthService.get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> List[ErrorIncidentListResponse]:
+) -> PaginatedErrorIncidentsResponse:
     """
-    エラーインシデント一覧取得
+    エラーインシデント一覧取得（ページネーション付き）
 
     Args:
         service_name: サービス名フィルター
@@ -110,11 +115,11 @@ async def get_error_incidents(
         db: データベースセッション
 
     Returns:
-        List[ErrorIncidentListResponse]: インシデント一覧
+        PaginatedErrorIncidentsResponse: ページネーション付きインシデント一覧
     """
     try:
         error_service = ErrorService(db)
-        incidents = await error_service.get_incidents(
+        incidents, total_count = await error_service.get_incidents_with_count(
             service_name=service_name,
             environment=environment,
             severity=severity,
@@ -124,12 +129,19 @@ async def get_error_incidents(
         )
 
         incident_list = [
-            ErrorIncidentListResponse.model_validate(incident) for incident in incidents
+            ErrorIncidentListResponse.model_validate(incident)
+            for incident in incidents
         ]
 
+        has_next = offset + limit < total_count
+        has_prev = offset > 0
+
         logger.debug(
-            "Error incidents retrieved",
+            "Error incidents retrieved with pagination",
             count=len(incident_list),
+            total_count=total_count,
+            has_next=has_next,
+            has_prev=has_prev,
             filters={
                 "service_name": service_name,
                 "environment": environment,
@@ -138,7 +150,14 @@ async def get_error_incidents(
             },
         )
 
-        return incident_list
+        return PaginatedErrorIncidentsResponse(
+            items=incident_list,
+            total_count=total_count,
+            limit=limit,
+            offset=offset,
+            has_next=has_next,
+            has_prev=has_prev,
+        )
 
     except DatabaseError as e:
         logger.error("Failed to get error incidents", error=str(e))
@@ -407,6 +426,7 @@ if (obj != null) {{
             fix_code=fix_code,
             test_results=test_results,
             pr_url=None,  # TODO: GitHub PR作成後にURLを設定
+            estimated_completion=None,
         )
 
     except HTTPException:
@@ -425,7 +445,11 @@ if (obj != null) {{
         )
 
 
-@router.post("/remediation", response_model=RemediationAttemptResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/remediation",
+    response_model=RemediationAttemptResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_remediation_attempt(
     attempt_data: RemediationAttemptCreate,
     current_user: Dict[str, Any] = Depends(AuthService.get_current_user),

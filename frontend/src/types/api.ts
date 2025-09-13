@@ -152,3 +152,13 @@ export interface RemediationResponse {
   pr_url?: string;
   estimated_completion?: string;
 }
+
+// ページネーション関連
+export interface PaginatedErrorIncidentsResponse {
+  items: ErrorIncidentListResponse[];
+  total_count: number;
+  limit: number;
+  offset: number;
+  has_next: boolean;
+  has_prev: boolean;
+}

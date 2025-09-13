@@ -147,3 +147,13 @@ class RemediationStatusUpdate(BaseModel):
     status: str = Field(
         ..., description="新しいステータス (pending/in_progress/completed/failed)"
     )
+
+
+class PaginatedErrorIncidentsResponse(BaseModel):
+    """ページネーション付きエラーインシデント一覧レスポンススキーマ"""
+    items: List[ErrorIncidentListResponse] = Field(description="インシデント一覧")
+    total_count: int = Field(description="総件数")
+    limit: int = Field(description="取得件数上限")
+    offset: int = Field(description="オフセット")
+    has_next: bool = Field(description="次のページが存在するか")
+    has_prev: bool = Field(description="前のページが存在するか")

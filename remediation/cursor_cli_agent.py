@@ -151,7 +151,16 @@ class CursorCLIAgent:
         """
         try:
             # TestExecutionServiceを使用して包括的テスト実行
-            self.test_service = TestExecutionService(repo_path)
+            # 既存のサービスインスタンスを再利用し、作業ディレクトリを更新
+            if not hasattr(self, 'test_service') or self.test_service is None:
+                self.test_service = TestExecutionService(repo_path)
+                logger.info("Created new TestExecutionService instance", repo_path=repo_path)
+            else:
+                # 既存のインスタンスの作業ディレクトリを更新
+                old_dir = self.test_service.working_directory
+                self.test_service.working_directory = repo_path
+                logger.info("Updated TestExecutionService working directory",
+                            old_dir=old_dir, new_dir=repo_path)
 
             results = {
                 "success": False,
@@ -545,7 +554,7 @@ This automated fix addresses the error and includes proper error handling and te
     ) -> str:
         """強化されたPR説明文生成"""
         service_used = fix_data.get("service_used", "unknown")
-        confidence_score = fix_data.get("confidence_score", 0.0) if "confidence_score" in str(fix_data) else "N/A"
+        confidence_score = fix_data.get("confidence_score", "N/A")
 
         return f"""
 ## 🤖 Enhanced Automated Fix

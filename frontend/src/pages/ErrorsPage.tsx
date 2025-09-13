@@ -46,7 +46,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/api';
-import { ErrorIncidentListResponse } from '@/types/api';
+import { ErrorIncidentListResponse, PaginatedErrorIncidentsResponse } from '@/types/api';
 
 interface FilterState {
   service_name: string;
@@ -86,8 +86,8 @@ export const ErrorsPage: React.FC = () => {
         offset: (page - 1) * 20,
       });
 
-      setIncidents(data);
-      setTotalPages(Math.ceil(data.length / 20)); // 実際はAPIからtotal_countを取得
+      setIncidents(data.items);
+      setTotalPages(Math.ceil(data.total_count / 20));
 
     } catch (err) {
       console.error('Failed to fetch incidents:', err);
