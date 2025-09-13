@@ -64,7 +64,7 @@ async def login_for_access_token(
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
-            user=UserResponse.from_orm(user),
+            user=UserResponse.model_validate(user),
         )
 
     except AuthenticationError as e:
@@ -104,7 +104,7 @@ async def get_current_user(
         if not user:
             raise AuthenticationError("User not found")
 
-        return UserResponse.from_orm(user)
+        return UserResponse.model_validate(user)
 
     except AuthenticationError as e:
         raise HTTPException(
@@ -151,7 +151,7 @@ async def refresh_access_token(
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
-            user=UserResponse.from_orm(user),
+            user=UserResponse.model_validate(user),
         )
 
     except AuthenticationError as e:
