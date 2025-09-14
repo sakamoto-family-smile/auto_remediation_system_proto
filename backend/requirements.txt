@@ -24,7 +24,7 @@ firebase-admin==6.2.0
 
 # External APIs
 slack-sdk==3.23.0
-PyGithub==1.59.1
+PyGithub==2.8.1
 requests==2.31.0
 
 # JWT & Security
