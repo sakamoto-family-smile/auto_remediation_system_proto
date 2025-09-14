@@ -28,10 +28,9 @@ if settings.DATABASE_URL.startswith("sqlite"):
         echo=settings.DEBUG,
     )
 else:
-    # PostgreSQL等の場合
+    # PostgreSQL等の場合（非同期エンジン用）
     engine = create_async_engine(
         settings.DATABASE_URL,
-        poolclass=pool.QueuePool,
         pool_size=settings.DATABASE_POOL_SIZE,
         max_overflow=settings.DATABASE_MAX_OVERFLOW,
         pool_pre_ping=True,

@@ -41,28 +41,37 @@ services:
 
       # アプリケーション設定
       DEBUG: "true"
-      SECRET_KEY: "your-secret-key-here"
-      ALLOWED_ORIGINS: '["http://localhost:3000"]'
+      ENVIRONMENT: "development"
+      SECRET_KEY: "docker-compose-development-secret-key"
 
-      # Google Cloud設定（開発環境では無効化）
-      GOOGLE_CLOUD_PROJECT: "your-project-id"
-      VERTEX_AI_LOCATION: "asia-northeast1"
+      # JWT設定
+      JWT_EXPIRE_MINUTES: "60"
+      JWT_ALGORITHM: "HS256"
 
-      # Firebase設定（開発環境では無効化）
-      FIREBASE_PROJECT_ID: "your-firebase-project"
+      # Google Cloud設定（開発環境ダミー値）
+      GOOGLE_CLOUD_PROJECT: "docker-dev-project"
+      GCP_PROJECT_ID: "docker-dev-project"
+      VERTEX_AI_LOCATION: "us-central1"
+      VERTEX_AI_MODEL_NAME: "claude-3-sonnet@20240229"
 
-      # cursor-cli設定
-      CURSOR_API_KEY: "${CURSOR_API_KEY}"
+      # Firebase設定（開発環境ダミー値）
+      FIREBASE_PROJECT_ID: "docker-dev-firebase"
+      FIREBASE_WEB_API_KEY: "docker-dev-api-key"
 
-      # GitHub設定
-      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+      # 外部API設定
+      CURSOR_API_KEY: "${CURSOR_API_KEY:-docker-dev-cursor-key}"
+      GITHUB_TOKEN: "${GITHUB_TOKEN:-docker-dev-github-token}"
+      GITHUB_WEBHOOK_SECRET: "docker-dev-webhook-secret"
 
       # Slack設定
-      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
-      SLACK_SIGNING_SECRET: "${SLACK_SIGNING_SECRET}"
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN:-}"
+      SLACK_VERIFICATION_TOKEN: "${SLACK_VERIFICATION_TOKEN:-}"
+
+      # フロントエンド設定
+      FRONTEND_URL: "http://localhost:3000"
 
       # ログ設定
-      LOG_LEVEL: "DEBUG"
+      LOG_LEVEL: "INFO"
     ports:
       - "8000:8000"
     depends_on:
