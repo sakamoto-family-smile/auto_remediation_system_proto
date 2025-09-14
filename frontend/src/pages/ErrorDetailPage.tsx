@@ -43,7 +43,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/api';
-import { ErrorIncidentResponse, RemediationResponse, RemediationAttemptResponse } from '@/types/api';
+import { ErrorIncidentResponse, RemediationAttemptResponse } from '@/types/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;
