@@ -27,11 +27,11 @@ class TestAuthEndpoints:
         with patch("app.services.auth_service.auth.verify_id_token") as mock_verify:
             with patch("app.services.user_service.UserService.get_or_create_user") as mock_get_user:
                 mock_verify.return_value = mock_firebase_user
-                
+
                 # 有効なUUIDと適切なMockデータを使用
                 test_user_id = str(uuid.uuid4())
                 test_org_id = str(uuid.uuid4())
-                
+
                 mock_user = AsyncMock()
                 mock_user.id = test_user_id
                 mock_user.email = "test@example.com"
@@ -39,7 +39,7 @@ class TestAuthEndpoints:
                 mock_user.google_id = "test-firebase-uid"
                 mock_user.organization_id = test_org_id
                 mock_user.created_at = "2025-01-01T00:00:00Z"
-                
+
                 mock_get_user.return_value = mock_user
 
                 # Act
@@ -92,13 +92,13 @@ class TestAuthEndpoints:
         # Arrange
         test_user_id = str(uuid.uuid4())
         test_org_id = str(uuid.uuid4())
-        
+
         # FastAPIの依存関係をオーバーライド
         def mock_get_current_user():
             return {"user_id": test_user_id}
-        
+
         app.dependency_overrides[AuthService.get_current_user] = mock_get_current_user
-        
+
         with patch("app.services.user_service.UserService.get_user_by_id") as mock_get_user:
             mock_user = AsyncMock()
             mock_user.id = test_user_id
@@ -107,7 +107,7 @@ class TestAuthEndpoints:
             mock_user.google_id = "test-firebase-uid"
             mock_user.organization_id = test_org_id
             mock_user.created_at = "2025-01-01T00:00:00Z"
-            
+
             mock_get_user.return_value = mock_user
 
             # Act
@@ -120,7 +120,7 @@ class TestAuthEndpoints:
             assert response.status_code == status.HTTP_200_OK
             data = response.json()
             assert data["email"] == "test@example.com"
-            
+
         # クリーンアップ
         app.dependency_overrides.clear()
 
@@ -143,13 +143,13 @@ class TestAuthEndpoints:
         # Arrange
         test_user_id = str(uuid.uuid4())
         test_org_id = str(uuid.uuid4())
-        
+
         # FastAPIの依存関係をオーバーライド
         def mock_get_current_user():
             return {"user_id": test_user_id}
-        
+
         app.dependency_overrides[AuthService.get_current_user] = mock_get_current_user
-        
+
         with patch("app.services.user_service.UserService.get_user_by_id") as mock_get_user:
             mock_user = AsyncMock()
             mock_user.id = test_user_id
@@ -158,7 +158,7 @@ class TestAuthEndpoints:
             mock_user.google_id = "test-firebase-uid"
             mock_user.organization_id = test_org_id
             mock_user.created_at = "2025-01-01T00:00:00Z"
-            
+
             mock_get_user.return_value = mock_user
 
             # Act
@@ -173,6 +173,6 @@ class TestAuthEndpoints:
             assert "access_token" in data
             assert data["token_type"] == "bearer"
             assert "user" in data
-            
+
         # クリーンアップ
         app.dependency_overrides.clear()
