@@ -83,12 +83,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Cache pip dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
@@ -129,7 +129,7 @@ jobs:
           FIREBASE_PROJECT_ID: test-firebase
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./backend/coverage.xml
           flags: backend
@@ -160,7 +160,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -299,21 +299,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run security scan with bandit
-        run: |
-          pip install bandit
-          bandit -r backend/app/ remediation/ -f json -o security-report.json || true
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Upload security report
-        uses: actions/upload-artifact@v3
+      - name: Install security scanning tools
+        run: |
+          pip install bandit safety
+
+      - name: Run bandit security scan
+        run: |
+          bandit -r backend/app/ remediation/ -f json -o bandit-report.json || true
+          bandit -r backend/app/ remediation/ -f txt -o bandit-report.txt || true
+
+      - name: Run safety check for dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          safety check --json --output safety-report.json || true
+          safety check --output safety-report.txt || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: security-report
-          path: security-report.json
+          name: security-reports
+          path: |
+            bandit-report.json
+            bandit-report.txt
+            safety-report.json
+            safety-report.txt
 
   # テスト結果サマリー
   test-summary:
-    needs: [test-backend, test-remediation, test-frontend, test-docker]
+    needs: [test-backend, test-remediation, test-frontend, test-docker, security-scan]
     if: always()
     runs-on: ubuntu-latest
 
@@ -328,6 +347,10 @@ jobs:
           echo "| Remediation Agent | ${{ needs.test-remediation.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend | ${{ needs.test-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Docker | ${{ needs.test-docker.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Test Coverage" >> $GITHUB_STEP_SUMMARY
           echo "Coverage reports are available in the job artifacts." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔒 Security Reports" >> $GITHUB_STEP_SUMMARY
+          echo "Security scan reports are available in the job artifacts." >> $GITHUB_STEP_SUMMARY
