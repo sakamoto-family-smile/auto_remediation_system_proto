@@ -4,13 +4,17 @@
 
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 
 from sqlalchemy import String, DateTime, ForeignKey, Text, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.error import RemediationAttempt
 
 
 class AuditLog(Base):

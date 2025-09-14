@@ -4,13 +4,16 @@
 
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
 from sqlalchemy import String, DateTime, ForeignKey, Text, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.audit import PRReview
 
 
 class ErrorIncident(Base):

@@ -4,13 +4,16 @@
 
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from sqlalchemy import String, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class ChatSession(Base):
