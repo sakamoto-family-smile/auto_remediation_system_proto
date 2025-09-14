@@ -43,7 +43,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/api';
-import { ErrorIncidentResponse, RemediationResponse } from '@/types/api';
+import { ErrorIncidentResponse, RemediationResponse, RemediationAttemptResponse } from '@/types/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -64,7 +64,7 @@ export const ErrorDetailPage: React.FC = () => {
 
   // State
   const [incident, setIncident] = useState<ErrorIncidentResponse | null>(null);
-  const [remediationAttempts, setRemediationAttempts] = useState<RemediationResponse[]>([]);
+  const [remediationAttempts] = useState<RemediationAttemptResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -126,7 +126,7 @@ export const ErrorDetailPage: React.FC = () => {
 
     try {
       setRemediating(true);
-      const _result = await apiService.remediateError({ incident_id: incidentId });
+      await apiService.remediateError({ incident_id: incidentId });
 
       // 改修結果を表示
       setRemediationDialogOpen(true);
