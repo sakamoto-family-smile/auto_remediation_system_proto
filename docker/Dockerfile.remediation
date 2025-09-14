@@ -1,5 +1,5 @@
 # cursor-cli + Python改修エージェント用Dockerfile
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # 作業ディレクトリ設定
 WORKDIR /app
