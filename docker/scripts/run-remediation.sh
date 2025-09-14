@@ -32,7 +32,8 @@ async def wait_for_db():
     while retry_count < max_retries:
         try:
             async with engine.begin() as conn:
-                await conn.execute('SELECT 1')
+                from sqlalchemy import text
+                await conn.execute(text('SELECT 1'))
             print('✅ Database connection successful')
             return
         except Exception as e:
