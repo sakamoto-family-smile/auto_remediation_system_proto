@@ -233,7 +233,7 @@ class TestSlackService:
         assert blocks[0]["type"] == "header"
         assert "🔍 改修承認リクエスト" in blocks[0]["text"]["text"]
         assert blocks[4]["type"] == "actions"
-        
+
         # Check that approve and reject buttons are present
         actions = blocks[4]["elements"]
         button_texts = [action["text"]["text"] for action in actions if action["type"] == "button"]

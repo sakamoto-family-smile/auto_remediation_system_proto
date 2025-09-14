@@ -164,7 +164,7 @@ class TestAuditService:
         # Mock total actions
         mock_total_result = Mock()
         mock_total_result.scalar.return_value = 25
-        
+
         # Mock actions by type
         mock_actions_result = Mock()
         mock_actions_result.fetchall.return_value = [
@@ -172,7 +172,7 @@ class TestAuditService:
             ("create_incident", 8),
             ("approve_remediation", 7)
         ]
-        
+
         # Mock resources by type
         mock_resources_result = Mock()
         mock_resources_result.fetchall.return_value = [
@@ -219,14 +219,14 @@ class TestAuditService:
             Mock(scalar=lambda: 70),   # user_actions
             Mock(scalar=lambda: 15),   # active_users
         ]
-        
+
         # Mock daily activity
         mock_daily_result = Mock()
         mock_daily_result.fetchall.return_value = [
             (datetime.utcnow().date(), 20),
             ((datetime.utcnow() - timedelta(days=1)).date(), 15)
         ]
-        
+
         # Mock top actions
         mock_top_actions_result = Mock()
         mock_top_actions_result.fetchall.return_value = [

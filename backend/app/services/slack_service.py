@@ -28,7 +28,7 @@ class SlackService:
         self.bot_token = bot_token
         if self.bot_token is None:
             self.bot_token = getattr(settings, 'SLACK_BOT_TOKEN', None)
-        
+
         # 空文字列もNoneとして扱う
         if self.bot_token and self.bot_token.strip():
             self.client = WebClient(token=self.bot_token)

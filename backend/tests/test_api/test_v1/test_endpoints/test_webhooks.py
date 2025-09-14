@@ -194,7 +194,7 @@ class TestWebhookEndpoints:
             "user": {"id": "U123456", "name": "testuser"},
             "channel": {"id": "C123456", "name": "alerts"}
         }
-        
+
         payload = {
             "token": "test-token",
             "payload": json.dumps(interactive_payload)

@@ -74,7 +74,7 @@ class TestMonitoringService:
         """デフォルトルール設定テスト"""
         # Assert
         assert len(monitoring_service.alert_rules) == 4
-        
+
         rule_names = [rule.name for rule in monitoring_service.alert_rules]
         assert "critical_error_spike" in rule_names
         assert "high_error_rate" in rule_names
@@ -224,7 +224,7 @@ class TestMonitoringService:
         # Arrange
         with patch.object(monitoring_service, '_get_alert_metrics') as mock_metrics, \
              patch.object(monitoring_service, '_send_alert_notification') as mock_send:
-            
+
             mock_metrics.return_value = {"total_errors": 10}
 
             # Act
@@ -264,14 +264,14 @@ class TestMonitoringService:
         # Mock database results
         mock_total_result = Mock()
         mock_total_result.scalar.return_value = 25
-        
+
         mock_severity_result = Mock()
         mock_severity_result.fetchall.return_value = [
             ("critical", 5),
             ("high", 10),
             ("medium", 10)
         ]
-        
+
         mock_service_result = Mock()
         mock_service_result.fetchall.return_value = [
             ("service1", 15),
