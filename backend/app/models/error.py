@@ -4,13 +4,16 @@
 
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
 from sqlalchemy import String, DateTime, ForeignKey, Text, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.audit import PRReview
 
 
 class ErrorIncident(Base):
@@ -31,6 +34,8 @@ class ErrorIncident(Base):
     language: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # 'python', 'javascript', 'typescript'
     severity: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'low', 'medium', 'high', 'critical'
     service_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    environment: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # 'development', 'staging', 'production'
+    occurrence_count: Mapped[int] = mapped_column(Integer, default=1)  # エラーの発生回数
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow

@@ -4,7 +4,6 @@
 
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import {
-  ApiError,
   TokenResponse,
   LoginRequest,
   UserResponse,
@@ -13,7 +12,6 @@ import {
   ChatCompletionRequest,
   ChatCompletionResponse,
   ErrorIncidentResponse,
-  ErrorIncidentListResponse,
   ErrorIncidentCreate,
   ErrorAnalysisRequest,
   ErrorAnalysisResponse,

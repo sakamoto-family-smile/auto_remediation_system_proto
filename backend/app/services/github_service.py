@@ -25,7 +25,7 @@ class GitHubService:
         Args:
             access_token: GitHub アクセストークン
         """
-        self.access_token = access_token or settings.GITHUB_ACCESS_TOKEN
+        self.access_token = access_token or settings.GITHUB_TOKEN
 
         if self.access_token:
             self.github = Github(self.access_token)

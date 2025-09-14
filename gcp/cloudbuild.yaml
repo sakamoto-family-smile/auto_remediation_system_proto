@@ -1,0 +1,152 @@
+# Google Cloud Build設定
+# 自動改修システムのCI/CDパイプライン
+
+steps:
+  # 1. 環境変数とシークレットの設定
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Setting up environment variables..."
+        gcloud secrets versions access latest --secret="auto-remediation-env" > .env
+
+  # 2. Dockerイメージのビルド - Backend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/auto-remediation-backend:$BUILD_ID',
+      '-t', 'gcr.io/$PROJECT_ID/auto-remediation-backend:latest',
+      '-f', 'backend/Dockerfile',
+      './backend'
+    ]
+
+  # 3. Dockerイメージのビルド - Frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/auto-remediation-frontend:$BUILD_ID',
+      '-t', 'gcr.io/$PROJECT_ID/auto-remediation-frontend:latest',
+      '-f', 'frontend/Dockerfile',
+      './frontend'
+    ]
+
+  # 4. テスト実行 - Backend
+  - name: 'gcr.io/$PROJECT_ID/auto-remediation-backend:$BUILD_ID'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cd /app
+        python -m pytest tests/ -v --cov=app --cov-report=xml
+        python -m flake8 app/
+        python -m mypy app/
+
+  # 5. セキュリティスキャン
+  - name: 'gcr.io/$PROJECT_ID/auto-remediation-backend:$BUILD_ID'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cd /app
+        python -m bandit -r app/ -f json -o bandit-report.json
+
+  # 6. イメージをContainer Registryにプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/auto-remediation-backend:$BUILD_ID']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/auto-remediation-backend:latest']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/auto-remediation-frontend:$BUILD_ID']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/auto-remediation-frontend:latest']
+
+  # 7. データベースマイグレーション
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Cloud SQL Proxyを起動してマイグレーション実行
+        echo "Running database migrations..."
+        gcloud sql connect auto-remediation-db --user=postgres --quiet
+
+  # 8. Cloud Runにデプロイ - Backend
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: [
+      'run', 'deploy', 'auto-remediation-backend',
+      '--image', 'gcr.io/$PROJECT_ID/auto-remediation-backend:$BUILD_ID',
+      '--region', 'us-central1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--memory', '2Gi',
+      '--cpu', '2',
+      '--max-instances', '10',
+      '--set-env-vars', 'ENVIRONMENT=production',
+      '--set-cloudsql-instances', '$PROJECT_ID:us-central1:auto-remediation-db'
+    ]
+
+  # 9. Cloud Runにデプロイ - Frontend
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: [
+      'run', 'deploy', 'auto-remediation-frontend',
+      '--image', 'gcr.io/$PROJECT_ID/auto-remediation-frontend:$BUILD_ID',
+      '--region', 'us-central1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--memory', '1Gi',
+      '--cpu', '1',
+      '--max-instances', '5'
+    ]
+
+  # 10. Cloud Functions デプロイ - Webhook処理
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: [
+      'functions', 'deploy', 'webhook-processor',
+      '--source', './cloud-functions/webhook-processor',
+      '--entry-point', 'process_webhook',
+      '--runtime', 'python39',
+      '--trigger-http',
+      '--allow-unauthenticated',
+      '--memory', '512MB',
+      '--timeout', '300s'
+    ]
+
+  # 11. Cloud Scheduler設定 - 定期タスク
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # 監査ログクリーンアップジョブ
+        gcloud scheduler jobs create http audit-log-cleanup \
+          --schedule="0 2 * * *" \
+          --uri="https://auto-remediation-backend-HASH-uc.a.run.app/api/v1/admin/cleanup-logs" \
+          --http-method=POST \
+          --headers="Authorization=Bearer $(gcloud auth print-access-token)" \
+          --location=us-central1 || true
+
+        # 期限切れ承認チェックジョブ
+        gcloud scheduler jobs create http expired-approvals-check \
+          --schedule="*/10 * * * *" \
+          --uri="https://auto-remediation-backend-HASH-uc.a.run.app/api/v1/admin/check-expired-approvals" \
+          --http-method=POST \
+          --headers="Authorization=Bearer $(gcloud auth print-access-token)" \
+          --location=us-central1 || true
+
+# オプション設定
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
+
+# タイムアウト設定
+timeout: '1800s'
+
+# 置換変数
+substitutions:
+  _ENVIRONMENT: 'production'
+  _REGION: 'us-central1'

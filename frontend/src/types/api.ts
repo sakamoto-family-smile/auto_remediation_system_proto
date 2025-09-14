@@ -153,6 +153,19 @@ export interface RemediationResponse {
   estimated_completion?: string;
 }
 
+export interface RemediationAttemptResponse {
+  id: string;
+  incident_id: string;
+  cursor_cli_version?: string;
+  analysis_prompt?: string;
+  fix_suggestion?: string;
+  test_results?: Record<string, any>;
+  github_pr_url?: string;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+}
+
 // ページネーション関連
 export interface PaginatedErrorIncidentsResponse {
   items: ErrorIncidentListResponse[];

@@ -63,7 +63,6 @@ class ErrorService:
             if existing_incident:
                 # 既存インシデントの発生回数を更新
                 existing_incident.occurrence_count += 1
-                existing_incident.last_occurred = datetime.utcnow()
                 await self.db.commit()
                 await self.db.refresh(existing_incident)
 
@@ -86,10 +85,8 @@ class ErrorService:
                 file_path=file_path,
                 line_number=line_number,
                 language=language,
-                metadata=metadata or {},
-                first_occurred=datetime.utcnow(),
-                last_occurred=datetime.utcnow(),
                 occurrence_count=1,
+                status="open"  # デフォルトステータスを設定
             )
 
             self.db.add(incident)

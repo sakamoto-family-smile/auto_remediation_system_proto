@@ -6,7 +6,7 @@ from functools import lru_cache
 from typing import List, Optional
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -62,6 +62,10 @@ class Settings(BaseSettings):
         default=None,
         description="Slack Bot トークン"
     )
+    SLACK_VERIFICATION_TOKEN: Optional[str] = Field(
+        default=None,
+        description="Slack Verification Token"
+    )
     SLACK_SIGNING_SECRET: Optional[str] = Field(
         default=None,
         description="Slack署名検証秘密鍵"
@@ -90,10 +94,22 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = Field(default="HS256", description="JWT署名アルゴリズム")
     JWT_EXPIRE_MINUTES: int = Field(default=60, description="JWT有効期限（分）")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+    # Frontend URL
+    FRONTEND_URL: str = Field(default="http://localhost:3000", description="フロントエンドURL")
+
+    # CI/CD・テスト用追加設定
+    ENVIRONMENT: Optional[str] = Field(default=None, description="実行環境")
+    GCP_PROJECT_ID: Optional[str] = Field(default=None, description="GCP Project ID (Legacy)")
+    FIREBASE_WEB_API_KEY: Optional[str] = Field(default=None, description="Firebase Web API Key")
+    VERTEX_AI_MODEL_NAME: Optional[str] = Field(default=None, description="Vertex AI Model Name (Legacy)")
+    REDIS_URL: Optional[str] = Field(default=None, description="Redis接続URL")
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore"  # 未定義フィールドを無視
+    )
 
 
 @lru_cache()

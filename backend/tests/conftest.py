@@ -3,17 +3,40 @@ pytest設定とフィクスチャー
 """
 
 import asyncio
+import os
 from typing import AsyncGenerator, Generator
+from fastapi import FastAPI
 
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
+import httpx
 from httpx import AsyncClient
+from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+# テスト用環境変数設定
+os.environ.update({
+    "SECRET_KEY": "test-secret-key-for-testing-only",
+    "DEBUG": "true",
+    "ENVIRONMENT": "test",
+    "DATABASE_URL": "sqlite+aiosqlite:///./test.db",
+    "GOOGLE_CLOUD_PROJECT": "test-project",
+    "GCP_PROJECT_ID": "test-project",
+    "FIREBASE_PROJECT_ID": "test-firebase-project",
+    "FIREBASE_WEB_API_KEY": "test-api-key",
+    "GITHUB_TOKEN": "test-github-token",
+    "GITHUB_WEBHOOK_SECRET": "test-github-webhook-secret",
+    "SLACK_BOT_TOKEN": "",  # 空文字にしてテストでNoneが効くようにする
+    "SLACK_VERIFICATION_TOKEN": "test-slack-verification-token",
+    "CURSOR_API_KEY": "test-cursor-api-key",
+    "FRONTEND_URL": "http://localhost:3000",
+    "VERTEX_AI_LOCATION": "us-central1",
+    "VERTEX_AI_MODEL_NAME": "claude-3-sonnet@20240229",
+})
+
 from app.core.database import Base, get_db
-from app.main import app
+from app.main import app as fastapi_app
 
 
 # テスト用データベースURL（SQLiteインメモリ）
@@ -71,7 +94,15 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-def client(test_session) -> TestClient:
+def app() -> FastAPI:
+    """
+    テスト用FastAPIアプリケーションフィクスチャー
+    """
+    return fastapi_app
+
+
+@pytest.fixture
+def client(app: FastAPI, test_session: AsyncSession) -> Generator[TestClient, None, None]:
     """
     テスト用FastAPIクライアントフィクスチャー
     """
@@ -88,7 +119,7 @@ def client(test_session) -> TestClient:
 
 
 @pytest_asyncio.fixture
-async def async_client(test_session) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(app: FastAPI, test_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """
     テスト用非同期HTTPクライアントフィクスチャー
     """
@@ -97,7 +128,8 @@ async def async_client(test_session) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    # AsyncClient を使用してFastAPIアプリとの統合
+    async with AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     # クリーンアップ

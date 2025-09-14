@@ -21,12 +21,10 @@ import {
   Paper,
   Tab,
   Tabs,
-  TextField,
   Toolbar,
   Typography,
   Alert,
   CircularProgress,
-  Divider,
   List,
   ListItem,
   ListItemText,
@@ -34,15 +32,13 @@ import {
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  Bug as BugIcon,
+  BugReport as BugIcon,
   Build as BuildIcon,
   Code as CodeIcon,
   Timeline as TimelineIcon,
   Assessment as AssessmentIcon,
   GitHub as GitHubIcon,
   CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon,
-  Warning as WarningIcon,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -68,7 +64,7 @@ export const ErrorDetailPage: React.FC = () => {
 
   // State
   const [incident, setIncident] = useState<ErrorIncidentResponse | null>(null);
-  const [remediationAttempts, setRemediationAttempts] = useState<RemediationAttemptResponse[]>([]);
+  const [remediationAttempts] = useState<RemediationAttemptResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -130,7 +126,7 @@ export const ErrorDetailPage: React.FC = () => {
 
     try {
       setRemediating(true);
-      const result = await apiService.remediateError({ incident_id: incidentId });
+      await apiService.remediateError({ incident_id: incidentId });
 
       // 改修結果を表示
       setRemediationDialogOpen(true);

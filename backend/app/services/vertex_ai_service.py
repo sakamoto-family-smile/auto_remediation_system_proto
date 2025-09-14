@@ -20,8 +20,8 @@ class VertexAIService:
     """Vertex AI Claude Sonnet-4統合サービス"""
 
     def __init__(self):
-        self.project_id = settings.GCP_PROJECT_ID
-        self.location = settings.GCP_LOCATION or "us-central1"
+        self.project_id = settings.GOOGLE_CLOUD_PROJECT
+        self.location = settings.VERTEX_AI_LOCATION or "us-central1"
         self.model_name = "claude-3-sonnet@20240229"
 
         # Vertex AI初期化

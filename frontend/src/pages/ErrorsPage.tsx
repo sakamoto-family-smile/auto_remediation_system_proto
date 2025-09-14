@@ -6,9 +6,6 @@ import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Box,
-  Button,
-  Card,
-  CardContent,
   Chip,
   Container,
   Dialog,
@@ -27,7 +24,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Toolbar,
   Typography,
   Alert,
@@ -38,15 +34,14 @@ import {
   ArrowBack as ArrowBackIcon,
   Refresh as RefreshIcon,
   FilterList as FilterIcon,
-  Bug as BugIcon,
+  BugReport as BugIcon,
   Build as BuildIcon,
   Visibility as ViewIcon,
-  PlayArrow as PlayIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/api';
-import { ErrorIncidentListResponse, PaginatedErrorIncidentsResponse } from '@/types/api';
+import { ErrorIncidentListResponse } from '@/types/api';
 
 interface FilterState {
   service_name: string;
