@@ -42,8 +42,7 @@ USER remediation
 RUN mkdir -p /app/workspace
 
 # 改修エージェント起動スクリプト
-COPY docker/scripts/run-remediation.sh /app/run-remediation.sh
-RUN chmod +x /app/run-remediation.sh
+COPY --chmod=755 docker/scripts/run-remediation.sh /app/run-remediation.sh
 
 # エントリーポイント
 ENTRYPOINT ["/app/run-remediation.sh"]
