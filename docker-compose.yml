@@ -1,5 +1,10 @@
 version: '3.8'
 
+# デフォルトプロファイル: 基本サービス（db, redis, backend）
+# 全コンポーネント起動: docker-compose --profile full up
+# 改修エージェント付き: docker-compose --profile remediation up
+# フロントエンド付き: docker-compose --profile frontend up
+
 services:
   # PostgreSQL データベース
   db:
@@ -94,18 +99,33 @@ services:
       context: .
       dockerfile: docker/Dockerfile.remediation
     environment:
+      # データベース設定
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/auto_remediation
+
+      # アプリケーション設定
+      SECRET_KEY: "docker-compose-development-secret-key"
+      GOOGLE_CLOUD_PROJECT: "docker-dev-project"
+      VERTEX_AI_LOCATION: "us-central1"
+      VERTEX_AI_MODEL_NAME: "claude-3-sonnet@20240229"
+
+      # Firebase設定（開発環境ダミー値）
+      FIREBASE_PROJECT_ID: "docker-dev-firebase"
+      FIREBASE_WEB_API_KEY: "docker-dev-api-key"
+
       # cursor-cli設定
-      CURSOR_API_KEY: "${CURSOR_API_KEY}"
+      CURSOR_API_KEY: "${CURSOR_API_KEY:-docker-dev-cursor-key}"
       CURSOR_CLI_TIMEOUT: "300"
 
       # GitHub設定
-      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+      GITHUB_TOKEN: "${GITHUB_TOKEN:-docker-dev-github-token}"
+      GITHUB_WEBHOOK_SECRET: "docker-dev-webhook-secret"
 
       # Slack設定
-      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN:-}"
+      SLACK_VERIFICATION_TOKEN: "${SLACK_VERIFICATION_TOKEN:-}"
 
-      # データベース設定
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/auto_remediation
+      # フロントエンド設定
+      FRONTEND_URL: "http://localhost:3000"
 
       # ログ設定
       LOG_LEVEL: "DEBUG"
@@ -116,9 +136,10 @@ services:
         condition: service_healthy
     volumes:
       - ./remediation:/app/remediation
+      - ./backend:/app/backend
       - remediation_workspace:/app/workspace
-    profiles:
-      - remediation  # docker-compose --profile remediation up で起動
+    # デフォルトで起動（プロファイル指定なし）
+    restart: unless-stopped
 
   # React フロントエンド（開発環境）
   frontend:
@@ -126,7 +147,7 @@ services:
     working_dir: /app
     environment:
       REACT_APP_API_URL: http://localhost:8000/api/v1
-      REACT_APP_FIREBASE_CONFIG: '{"apiKey":"your-api-key"}'
+      REACT_APP_FIREBASE_CONFIG: '{"apiKey":"docker-dev-api-key"}'
     ports:
       - "3000:3000"
     volumes:
@@ -137,6 +158,7 @@ services:
       - backend
     profiles:
       - frontend  # docker-compose --profile frontend up で起動
+      - full      # docker-compose --profile full up で起動
 
 volumes:
   postgres_data:
