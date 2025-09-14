@@ -89,6 +89,13 @@ class Settings(BaseSettings):
     # セキュリティ設定
     JWT_ALGORITHM: str = Field(default="HS256", description="JWT署名アルゴリズム")
     JWT_EXPIRE_MINUTES: int = Field(default=60, description="JWT有効期限（分）")
+    
+    # Frontend URL
+    FRONTEND_URL: str = Field(default="http://localhost:3000", description="フロントエンドURL")
+    
+    # Slack設定
+    SLACK_BOT_TOKEN: Optional[str] = Field(default=None, description="Slack Bot Token")
+    SLACK_VERIFICATION_TOKEN: Optional[str] = Field(default=None, description="Slack Verification Token")
 
     class Config:
         env_file = ".env"

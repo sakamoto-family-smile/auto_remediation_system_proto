@@ -31,6 +31,8 @@ class ErrorIncident(Base):
     language: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # 'python', 'javascript', 'typescript'
     severity: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'low', 'medium', 'high', 'critical'
     service_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    environment: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # 'development', 'staging', 'production'
+    occurrence_count: Mapped[int] = mapped_column(Integer, default=1)  # エラーの発生回数
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow

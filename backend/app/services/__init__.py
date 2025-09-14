@@ -3,15 +3,21 @@
 """
 
 from .auth_service import AuthService
-from .user_service import UserService
 from .chat_service import ChatService
 from .error_service import ErrorService
-from .remediation_service import RemediationService
+from .slack_service import SlackService
+from .approval_service import ApprovalService
+from .audit_service import AuditService
+from .monitoring_service import MonitoringService
+from .analytics_service import AnalyticsService
 
 __all__ = [
     "AuthService",
-    "UserService",
     "ChatService",
     "ErrorService",
-    "RemediationService",
+    "SlackService",
+    "ApprovalService",
+    "AuditService",
+    "MonitoringService",
+    "AnalyticsService",
 ]

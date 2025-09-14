@@ -3,6 +3,7 @@ pytest設定とフィクスチャー
 """
 
 import asyncio
+import os
 from typing import AsyncGenerator, Generator
 
 import pytest
@@ -11,6 +12,26 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+# テスト用環境変数設定
+os.environ.update({
+    "SECRET_KEY": "test-secret-key-for-testing-only",
+    "DEBUG": "true",
+    "ENVIRONMENT": "test",
+    "DATABASE_URL": "sqlite+aiosqlite:///./test.db",
+    "GOOGLE_CLOUD_PROJECT": "test-project",
+    "GCP_PROJECT_ID": "test-project",
+    "FIREBASE_PROJECT_ID": "test-firebase-project",
+    "FIREBASE_WEB_API_KEY": "test-api-key",
+    "GITHUB_TOKEN": "test-github-token",
+    "GITHUB_WEBHOOK_SECRET": "test-github-webhook-secret",
+    "SLACK_BOT_TOKEN": "",  # 空文字にしてテストでNoneが効くようにする
+    "SLACK_VERIFICATION_TOKEN": "test-slack-verification-token",
+    "CURSOR_API_KEY": "test-cursor-api-key",
+    "FRONTEND_URL": "http://localhost:3000",
+    "VERTEX_AI_LOCATION": "us-central1",
+    "VERTEX_AI_MODEL_NAME": "claude-3-sonnet@20240229",
+})
 
 from app.core.database import Base, get_db
 from app.main import app

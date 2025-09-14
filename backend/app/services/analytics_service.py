@@ -466,7 +466,7 @@ class AnalyticsService:
             logger.error("Failed to get resolution statistics", error=str(e))
             return {}
 
-    async def _analyze_trends(self, daily_errors: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_trends(self, daily_errors: List[Dict[str, Any]]) -> Dict[str, Any]:
         """トレンド分析"""
         try:
             if len(daily_errors) < 2:

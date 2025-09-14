@@ -19,14 +19,24 @@ logger = structlog.get_logger()
 settings = get_settings()
 
 # データベースエンジン作成
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    poolclass=pool.QueuePool,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    pool_pre_ping=True,
-    echo=settings.DEBUG,
-)
+if settings.DATABASE_URL.startswith("sqlite"):
+    # SQLiteの場合は特別な設定
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        poolclass=pool.StaticPool,
+        connect_args={"check_same_thread": False},
+        echo=settings.DEBUG,
+    )
+else:
+    # PostgreSQL等の場合
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        poolclass=pool.QueuePool,
+        pool_size=settings.DATABASE_POOL_SIZE,
+        max_overflow=settings.DATABASE_MAX_OVERFLOW,
+        pool_pre_ping=True,
+        echo=settings.DEBUG,
+    )
 
 # セッションファクトリー
 AsyncSessionLocal = async_sessionmaker(

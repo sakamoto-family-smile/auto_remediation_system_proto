@@ -136,8 +136,10 @@ class AuthService:
 
         except jwt.ExpiredSignatureError:
             raise AuthenticationError("Token has expired")
-        except jwt.JWTError as e:
+        except jwt.InvalidTokenError as e:
             raise AuthenticationError(f"Invalid token: {str(e)}")
+        except Exception as e:
+            raise AuthenticationError(f"Token validation failed: {str(e)}")
 
     @staticmethod
     async def get_current_user(

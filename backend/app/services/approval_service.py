@@ -69,7 +69,7 @@ class ApprovalService:
             incident = await self._get_incident(incident_id)
 
             # 承認ルールを適用
-            approval_config = await self._get_approval_config(incident, approval_type)
+            approval_config = self._get_approval_config(incident, approval_type)
 
             # 承認リクエストを記録
             approval_request = await self._create_approval_record(
@@ -243,7 +243,7 @@ class ApprovalService:
             logger.error("Failed to get incident", incident_id=str(incident_id), error=str(e))
             raise
 
-    async def _get_approval_config(
+    def _get_approval_config(
         self, incident: Dict[str, Any], approval_type: ApprovalType
     ) -> Dict[str, Any]:
         """承認設定取得"""
