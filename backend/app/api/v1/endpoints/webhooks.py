@@ -230,7 +230,8 @@ def _verify_github_signature(payload: bytes, signature: str) -> bool:
     Returns:
         bool: 署名が有効な場合True
     """
-    if not signature or not settings.GITHUB_WEBHOOK_SECRET:
+    current_settings = get_settings()
+    if not signature or not current_settings.GITHUB_WEBHOOK_SECRET:
         return False
 
     try:
@@ -242,7 +243,7 @@ def _verify_github_signature(payload: bytes, signature: str) -> bool:
 
         # HMAC-SHA256で署名計算
         computed_signature = hmac.new(
-            settings.GITHUB_WEBHOOK_SECRET.encode(),
+            current_settings.GITHUB_WEBHOOK_SECRET.encode(),
             payload,
             hashlib.sha256,
         ).hexdigest()

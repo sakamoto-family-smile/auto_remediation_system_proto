@@ -5,11 +5,13 @@ pytest設定とフィクスチャー
 import asyncio
 import os
 from typing import AsyncGenerator, Generator
+from fastapi import FastAPI
 
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
+import httpx
 from httpx import AsyncClient
+from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -34,7 +36,7 @@ os.environ.update({
 })
 
 from app.core.database import Base, get_db
-from app.main import app
+from app.main import app as fastapi_app
 
 
 # テスト用データベースURL（SQLiteインメモリ）
@@ -92,7 +94,15 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-def client(test_session) -> TestClient:
+def app() -> FastAPI:
+    """
+    テスト用FastAPIアプリケーションフィクスチャー
+    """
+    return fastapi_app
+
+
+@pytest.fixture
+def client(app: FastAPI, test_session: AsyncSession) -> Generator[TestClient, None, None]:
     """
     テスト用FastAPIクライアントフィクスチャー
     """
@@ -109,7 +119,7 @@ def client(test_session) -> TestClient:
 
 
 @pytest_asyncio.fixture
-async def async_client(test_session) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(app: FastAPI, test_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """
     テスト用非同期HTTPクライアントフィクスチャー
     """
@@ -118,7 +128,8 @@ async def async_client(test_session) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    # AsyncClient を使用してFastAPIアプリとの統合
+    async with AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
     # クリーンアップ
