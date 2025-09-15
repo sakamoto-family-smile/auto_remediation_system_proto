@@ -47,7 +47,7 @@ services:
       # アプリケーション設定
       DEBUG: "true"
       ENVIRONMENT: "development"
-      SECRET_KEY: "docker-compose-development-secret-key"
+      SECRET_KEY: "${SECRET_KEY:-docker-compose-development-secret-key}"
 
       # JWT設定
       JWT_EXPIRE_MINUTES: "60"
@@ -62,6 +62,7 @@ services:
       # Firebase設定（開発環境ダミー値）
       FIREBASE_PROJECT_ID: "docker-dev-firebase"
       FIREBASE_WEB_API_KEY: "docker-dev-api-key"
+      FIREBASE_CREDENTIALS_PATH: "/app/credentials/firebase-service-account.json"
 
       # 外部API設定
       CURSOR_API_KEY: "${CURSOR_API_KEY:-docker-dev-cursor-key}"
@@ -86,6 +87,9 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./credentials:/app/credentials:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/credentials/gcp-service-account.json"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
