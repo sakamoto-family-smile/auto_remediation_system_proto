@@ -26,12 +26,8 @@ RUN adduser --disabled-password --gecos '' appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# ヘルスチェック
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# ポート公開（Cloud Runでは動的に設定される）
+EXPOSE $PORT
 
-# ポート公開
-EXPOSE 8000
-
-# 起動コマンド
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# 起動コマンド（Cloud RunのPORT環境変数を使用）
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1

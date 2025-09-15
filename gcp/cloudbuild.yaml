@@ -79,14 +79,14 @@ steps:
     args: [
       'run', 'deploy', 'auto-remediation-backend',
       '--image', 'gcr.io/$PROJECT_ID/auto-remediation-backend:$BUILD_ID',
-      '--region', 'us-central1',
+      '--region', 'asia-northeast1',
       '--platform', 'managed',
       '--allow-unauthenticated',
       '--memory', '2Gi',
       '--cpu', '2',
       '--max-instances', '10',
       '--set-env-vars', 'ENVIRONMENT=production',
-      '--set-cloudsql-instances', '$PROJECT_ID:us-central1:auto-remediation-db'
+      '--set-cloudsql-instances', '$PROJECT_ID:asia-northeast1:auto-remediation-db'
     ]
 
   # 9. Cloud Runにデプロイ - Frontend
@@ -94,7 +94,7 @@ steps:
     args: [
       'run', 'deploy', 'auto-remediation-frontend',
       '--image', 'gcr.io/$PROJECT_ID/auto-remediation-frontend:$BUILD_ID',
-      '--region', 'us-central1',
+      '--region', 'asia-northeast1',
       '--platform', 'managed',
       '--allow-unauthenticated',
       '--memory', '1Gi',
@@ -127,7 +127,7 @@ steps:
           --uri="https://auto-remediation-backend-HASH-uc.a.run.app/api/v1/admin/cleanup-logs" \
           --http-method=POST \
           --headers="Authorization=Bearer $(gcloud auth print-access-token)" \
-          --location=us-central1 || true
+          --location=asia-northeast1 || true
 
         # 期限切れ承認チェックジョブ
         gcloud scheduler jobs create http expired-approvals-check \
@@ -135,7 +135,7 @@ steps:
           --uri="https://auto-remediation-backend-HASH-uc.a.run.app/api/v1/admin/check-expired-approvals" \
           --http-method=POST \
           --headers="Authorization=Bearer $(gcloud auth print-access-token)" \
-          --location=us-central1 || true
+          --location=asia-northeast1 || true
 
 # オプション設定
 options:
@@ -147,6 +147,6 @@ options:
 timeout: '1800s'
 
 # 置換変数
-substitutions:
-  _ENVIRONMENT: 'production'
-  _REGION: 'us-central1'
+# substitutions:
+#   _ENVIRONMENT: 'production'
+#   _REGION: 'asia-northeast1'
