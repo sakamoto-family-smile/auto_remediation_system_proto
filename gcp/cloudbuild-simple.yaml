@@ -8,6 +8,9 @@ steps:
       - |
         echo "Setting up environment variables..."
         gcloud secrets versions access latest --secret="auto-remediation-env" > backend/.env
+        echo "Getting Firebase credentials..."
+        FIREBASE_CREDS=$$(gcloud secrets versions access latest --secret="firebase-credentials")
+        echo "FIREBASE_SERVICE_ACCOUNT_JSON=$$FIREBASE_CREDS" >> backend/.env
 
   # 2. Dockerイメージのビルド - Backend
   - name: 'gcr.io/cloud-builders/docker'
@@ -28,19 +31,23 @@ steps:
 
   # 4. Cloud Runにデプロイ - Backend
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: [
-      'run', 'deploy', 'auto-remediation-backend',
-      '--image', 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/auto-remediation-repo/backend:$BUILD_ID',
-      '--region', 'asia-northeast1',
-      '--platform', 'managed',
-      '--allow-unauthenticated',
-      '--memory', '2Gi',
-      '--cpu', '2',
-      '--max-instances', '10',
-      '--timeout', '300s',
-      '--concurrency', '80',
-      '--set-env-vars', 'ENVIRONMENT=production,DEBUG=false,DATABASE_URL=sqlite+aiosqlite:///./app.db'
-    ]
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Cloud Runにデプロイ（Firebase認証情報をSecretから直接設定）
+        gcloud run deploy auto-remediation-backend \
+          --image asia-northeast1-docker.pkg.dev/$PROJECT_ID/auto-remediation-repo/backend:$BUILD_ID \
+          --region asia-northeast1 \
+          --platform managed \
+          --allow-unauthenticated \
+          --memory 2Gi \
+          --cpu 2 \
+          --max-instances 10 \
+          --timeout 300s \
+          --concurrency 80 \
+          --set-env-vars "ENVIRONMENT=production,DEBUG=false,DATABASE_URL=sqlite+aiosqlite:///./app.db,FIREBASE_PROJECT_ID=youyaku-ai" \
+          --set-secrets "FIREBASE_SERVICE_ACCOUNT_JSON=firebase-credentials:latest"
 
 # オプション設定
 options:

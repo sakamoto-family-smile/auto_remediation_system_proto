@@ -2,6 +2,7 @@
 認証サービス
 """
 
+import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
@@ -20,15 +21,59 @@ security = HTTPBearer()
 settings = get_settings()
 
 # Firebase Admin SDK初期化
+firebase_initialized = False
 if not firebase_admin._apps:
-    if settings.FIREBASE_CREDENTIALS_PATH:
-        cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
-    else:
-        cred = credentials.ApplicationDefault()
+    try:
+        # 1. 環境変数からJSON文字列を取得（Cloud Run推奨）
+        firebase_json = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
+        if firebase_json:
+            import json
+            import tempfile
+            # 一時ファイルに認証情報を書き込み
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                f.write(firebase_json)
+                temp_cred_path = f.name
 
-    firebase_admin.initialize_app(cred, {
-        "projectId": settings.FIREBASE_PROJECT_ID,
-    })
+            cred = credentials.Certificate(temp_cred_path)
+            firebase_admin.initialize_app(cred, {
+                "projectId": settings.FIREBASE_PROJECT_ID,
+            })
+            firebase_initialized = True
+            logger.info("Firebase Admin SDK initialized from environment variable")
+
+            # 一時ファイルを削除
+            os.unlink(temp_cred_path)
+
+        # 2. 認証情報ファイルが存在する場合（ローカル開発）
+        elif settings.FIREBASE_CREDENTIALS_PATH and os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
+            cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+            firebase_admin.initialize_app(cred, {
+                "projectId": settings.FIREBASE_PROJECT_ID,
+            })
+            firebase_initialized = True
+            logger.info("Firebase Admin SDK initialized from credentials file")
+
+        # 3. Application Default Credentials（GCPサービスアカウント）
+        else:
+            cred = credentials.ApplicationDefault()
+            firebase_admin.initialize_app(cred, {
+                "projectId": settings.FIREBASE_PROJECT_ID,
+            })
+            firebase_initialized = True
+            logger.info("Firebase Admin SDK initialized with Application Default Credentials")
+
+    except Exception as e:
+        logger.warning(f"Firebase Admin SDK initialization failed: {e}")
+
+# Firebase初期化が失敗した場合のフォールバック
+if not firebase_initialized and not firebase_admin._apps:
+    try:
+        firebase_admin.initialize_app(credentials.Mock(), {
+            "projectId": settings.FIREBASE_PROJECT_ID or "mock-project",
+        })
+        logger.info("Firebase Mock initialized for development")
+    except Exception as e:
+        logger.error(f"Firebase Mock initialization also failed: {e}")
 
 
 class AuthService:
