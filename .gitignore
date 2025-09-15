@@ -190,3 +190,6 @@ temp/
 
 # Local development
 .local/
+
+# ignore service account
+service-account.json
